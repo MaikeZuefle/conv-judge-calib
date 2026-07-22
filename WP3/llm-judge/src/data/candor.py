@@ -2,7 +2,7 @@ import csv
 from functools import cache
 from pathlib import Path
 
-from huggingface_hub import snapshot_download
+from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import disable_progress_bars
 from huggingface_hub.utils.logging import set_verbosity_error
 
@@ -20,18 +20,16 @@ def _metrics():
 
 
 @cache
-def _snapshot_dir():
-    patterns = [f"{convo_id}/processed/{convo_id}.mp3" for convo_id in _metrics()]
-    return Path(snapshot_download(REPO_ID, repo_type="dataset", allow_patterns=patterns))
+def _included_ids():
+    return sorted(cid for cid, row in _metrics().items() if row["label"] != "UNSCORED" and row["paper_pcs_proxy"])
 
 
 def list_conversations():
-    _snapshot_dir()
-    return sorted(_metrics())
+    return _included_ids()
 
 
 def get_audio_path(convo_id):
-    return str(_snapshot_dir() / convo_id / "processed" / f"{convo_id}.mp3")
+    return hf_hub_download(REPO_ID, repo_type="dataset", filename=f"{convo_id}/processed/{convo_id}.mp3")
 
 
 def get_label(convo_id):

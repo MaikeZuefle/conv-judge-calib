@@ -1,0 +1,46 @@
+[
+  {
+    "question": "To what extent do you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy) right now?",
+    "single_speaker": false
+  },
+  {
+    "question": "Overall during your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
+    "single_speaker": false
+  },
+  {
+    "question": "At the beginning of your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
+    "single_speaker": false
+  },
+  {
+    "question": "In the middle of your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
+    "single_speaker": false
+  },
+  {
+    "question": "Toward the end of your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
+    "single_speaker": false
+  },
+  {
+    "question": "At the best moment of your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
+    "single_speaker": false
+  },
+  {
+    "question": "How enjoyable did you find the conversation?",
+    "single_speaker": false
+  },
+  {
+    "question": "How much did you like your conversation partner?",
+    "single_speaker": true
+  },
+  {
+    "question": "How much do think your conversation partner liked you?",
+    "single_speaker": true
+  },
+  {
+    "question": "Imagine you were to rank the last 100 people you had a conversation with according to how good of a conversationalist they are. \"0\" is the least good conversationalist youve talked to. \"50\" is right in the middle. \"100\" is the best conversationalist. Where would you rank the person that you just talked to on this scale? Please give this question some thought, and try to be as honest and precise as possible.",
+    "single_speaker": true
+  },
+  {
+    "question": "Imagine a good friend of yours. Imagine further that your friend and the person you were just talking to had coffee with one another. How likely is it that they would become friends? \"0\" - Not at all likely \"50\" - Moderately likely \"100\" - Extremely likely",
+    "single_speaker": true
+  }
+]

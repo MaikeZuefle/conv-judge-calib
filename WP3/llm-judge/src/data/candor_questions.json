@@ -42,5 +42,15 @@
   {
     "question": "Imagine a good friend of yours. Imagine further that your friend and the person you were just talking to had coffee with one another. How likely is it that they would become friends? \"0\" - Not at all likely \"50\" - Moderately likely \"100\" - Extremely likely",
     "single_speaker": true
+  },
+  {
+    "question": "How much do the two speakers seem to like each other?",
+    "single_speaker": false,
+    "extra": true
+  },
+  {
+    "question": "How well do the speakers seem to get along with each other?",
+    "single_speaker": false,
+    "extra": true
   }
 ]

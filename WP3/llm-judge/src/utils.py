@@ -11,5 +11,9 @@ def log(level: str, msg: str):
     print(f"{colorize(f'[{level}]', LEVEL_COLORS.get(level, '97'))} {msg}")
 
 
-def get_output_path(args):
-    return Path(args.output_folder) / f"{args.dataset}_{args.model}_{args.prompt}.jsonl"
+def get_run_dir(args):
+    return Path(args.output_folder) / f"{args.dataset}_{args.model}_{args.prompt}"
+
+
+def get_examples_path(args):
+    return get_run_dir(args) / "examples.jsonl"

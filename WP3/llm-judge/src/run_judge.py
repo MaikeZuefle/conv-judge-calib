@@ -7,7 +7,7 @@ from transformers import set_seed
 from data import candor
 from prompts import PROMPTS
 from models.qwen25omni import Qwen25Omni
-from utils import get_output_path, log
+from utils import get_examples_path, log
 
 DATASETS = {"candor": candor}
 MODELS = {"qwen25omni": Qwen25Omni}
@@ -24,7 +24,7 @@ def main(args):
     set_seed(args.seed)
 
     dataset = DATASETS[args.dataset]
-    output_path = get_output_path(args)
+    output_path = get_examples_path(args)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     done_ids = load_done_ids(output_path)
 

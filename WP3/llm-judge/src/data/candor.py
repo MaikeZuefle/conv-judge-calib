@@ -86,5 +86,11 @@ def get_label(convo_id):
     return float(_metrics()[convo_id]["paper_pcs_proxy"])
 
 
+def get_survey_values(convo_id, column):
+    path = hf_hub_download(REPO_ID, repo_type="dataset", filename=f"{convo_id}/survey.csv")
+    with open(path) as f:
+        return [float(row[column]) for row in csv.DictReader(f) if row[column]]
+
+
 def get_category(convo_id):
     return _metrics()[convo_id]["label"]

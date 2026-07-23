@@ -21,6 +21,11 @@ CANDOR_QUESTIONS_LIKING_SCALED = CANDOR_QUESTIONS_SCALED + [
 CANDOR_QUESTIONS = [q for q, _ in CANDOR_QUESTIONS_SCALED]
 CANDOR_QUESTIONS_LIKING = [q for q, _ in CANDOR_QUESTIONS_LIKING_SCALED]
 
+# (label, scale, survey_column) for each question with human-eval metadata, in CANDOR_QUESTIONS_LIKING order
+CANDOR_QUESTIONS_LIKING_META = [
+    (q["label"], tuple(q["scale"]), q["survey_column"]) for q in (_GENERAL + _LIKING_EXTRA)
+]
+
 
 def cot_questions_prompt(questions):
     questions_block = "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1))

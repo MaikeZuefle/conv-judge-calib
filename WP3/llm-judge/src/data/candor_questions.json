@@ -2,37 +2,51 @@
   {
     "question": "To what extent do you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy) right now?",
     "single_speaker": false,
-    "scale": [1, 9]
+    "scale": [1, 9],
+    "label": "Current mood",
+    "survey_column": "pre_affect"
   },
   {
     "question": "Overall during your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
     "single_speaker": false,
-    "scale": [1, 9]
+    "scale": [1, 9],
+    "label": "Overall mood",
+    "survey_column": "overall_affect"
   },
   {
     "question": "At the beginning of your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
     "single_speaker": false,
-    "scale": [1, 9]
+    "scale": [1, 9],
+    "label": "Mood at start",
+    "survey_column": "begin_affect"
   },
   {
     "question": "In the middle of your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
     "single_speaker": false,
-    "scale": [1, 9]
+    "scale": [1, 9],
+    "label": "Mood mid-conversation",
+    "survey_column": "middle_affect"
   },
   {
     "question": "Toward the end of your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
     "single_speaker": false,
-    "scale": [1, 9]
+    "scale": [1, 9],
+    "label": "Mood at end",
+    "survey_column": "end_affect"
   },
   {
     "question": "At the best moment of your conversation, to what extent did you feel positive feelings (e.g., good, pleasant, happy) or negative feelings (e.g., bad, unpleasant, unhappy)?",
     "single_speaker": false,
-    "scale": [1, 9]
+    "scale": [1, 9],
+    "label": "Mood at best moment",
+    "survey_column": "best_affect"
   },
   {
     "question": "How enjoyable did you find the conversation?",
     "single_speaker": false,
-    "scale": [1, 9]
+    "scale": [1, 9],
+    "label": "Enjoyable",
+    "survey_column": "how_enjoyable"
   },
   {
     "question": "How much did you like your conversation partner?",
@@ -58,12 +72,16 @@
     "question": "How much do the two speakers seem to like each other?",
     "single_speaker": false,
     "extra": true,
-    "scale": [1, 7]
+    "scale": [1, 7],
+    "label": "Speakers like each other",
+    "survey_column": "i_like_you"
   },
   {
     "question": "How well do the speakers seem to get along with each other?",
     "single_speaker": false,
     "extra": true,
-    "scale": [1, 7]
+    "scale": [1, 7],
+    "label": "Speakers get along",
+    "survey_column": "you_like_me"
   }
 ]

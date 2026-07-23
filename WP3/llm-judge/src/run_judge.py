@@ -43,8 +43,8 @@ def main(args):
     pending = (convo_id for convo_id in convo_ids if convo_id not in done_ids)
     with open(output_path, "a") as f:
         for convo_id in tqdm(pending, initial=len(done_ids), total=len(convo_ids)):
-            audio = dataset.get_audio_path(convo_id)
-            output = model.generate(prompt, audio)
+            content = dataset.get_input(convo_id, args.input_modality)
+            output = model.generate(prompt, content, args.input_modality)
             label = dataset.get_label(convo_id)
             category = dataset.get_category(convo_id)
             f.write(json.dumps({"id": convo_id, "output": output, "label": label, "category": category}) + "\n")
@@ -58,6 +58,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", default="candor", choices=list(DATASETS))
     parser.add_argument("--model", default="qwen25omni", choices=list(MODELS))
     parser.add_argument("--prompt", default="success", choices=list(PROMPTS))
+    parser.add_argument("--input_modality", default="speech", choices=["speech", "text"])
     parser.add_argument("--output_folder", default="outputs")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()

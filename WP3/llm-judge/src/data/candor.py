@@ -32,6 +32,34 @@ def get_audio_path(convo_id):
     return hf_hub_download(REPO_ID, repo_type="dataset", filename=f"{convo_id}/processed/{convo_id}.mp3")
 
 
+def get_transcript(convo_id):
+    path = hf_hub_download(
+        REPO_ID, repo_type="dataset", filename=f"{convo_id}/transcription/transcript_backbiter.csv"
+    )
+    with open(path) as f:
+        rows = list(csv.DictReader(f))
+
+    speaker_ids = []
+    for row in rows:
+        speaker_id = row["speaker"].strip()
+        if speaker_id not in speaker_ids:
+            speaker_ids.append(speaker_id)
+    labels = {speaker_id: f"Speaker {chr(65 + i)}" for i, speaker_id in enumerate(speaker_ids)}
+
+    lines = []
+    for row in rows:
+        line = f"{labels[row['speaker'].strip()]}: {row['utterance']}"
+        if row["backchannel"]:
+            backchannel_label = labels[row["backchannel_speaker"].strip()]
+            line += f" [{backchannel_label} backchannel: {row['backchannel']}]"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def get_input(convo_id, modality):
+    return get_transcript(convo_id) if modality == "text" else get_audio_path(convo_id)
+
+
 def get_label(convo_id):
     return float(_metrics()[convo_id]["paper_pcs_proxy"])
 

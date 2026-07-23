@@ -12,7 +12,7 @@ def log(level: str, msg: str):
 
 
 def get_run_dir(args):
-    return Path(args.output_folder) / f"{args.dataset}_{args.model}_{args.prompt}"
+    return Path(args.output_folder) / f"{args.dataset}_{args.model}_{args.prompt}_{args.input_modality}"
 
 
 def get_examples_path(args):

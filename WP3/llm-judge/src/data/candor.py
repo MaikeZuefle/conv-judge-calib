@@ -32,7 +32,7 @@ def get_audio_path(convo_id):
     return hf_hub_download(REPO_ID, repo_type="dataset", filename=f"{convo_id}/processed/{convo_id}.mp3")
 
 
-def get_transcript(convo_id):
+def _transcript_turns(convo_id):
     path = hf_hub_download(
         REPO_ID, repo_type="dataset", filename=f"{convo_id}/transcription/transcript_backbiter.csv"
     )
@@ -46,14 +46,36 @@ def get_transcript(convo_id):
             speaker_ids.append(speaker_id)
     labels = {speaker_id: f"Speaker {chr(65 + i)}" for i, speaker_id in enumerate(speaker_ids)}
 
-    lines = []
+    turns = []
     for row in rows:
-        line = f"{labels[row['speaker'].strip()]}: {row['utterance']}"
+        turn = {"label": labels[row["speaker"].strip()], "utterance": row["utterance"]}
         if row["backchannel"]:
-            backchannel_label = labels[row["backchannel_speaker"].strip()]
-            line += f" [{backchannel_label} backchannel: {row['backchannel']}]"
+            turn["backchannel_label"] = labels[row["backchannel_speaker"].strip()]
+            turn["backchannel_text"] = row["backchannel"]
+        turns.append(turn)
+    return turns
+
+
+def get_transcript(convo_id):
+    lines = []
+    for turn in _transcript_turns(convo_id):
+        line = f"{turn['label']}: {turn['utterance']}"
+        if "backchannel_text" in turn:
+            line += f" [{turn['backchannel_label']} backchannel: {turn['backchannel_text']}]"
         lines.append(line)
     return "\n".join(lines)
+
+
+def get_transcript_html(convo_id):
+    speaker_tags = {"Speaker A": "b", "Speaker B": "strong"}
+    lines = []
+    for turn in _transcript_turns(convo_id):
+        tag = speaker_tags.get(turn["label"], "b")
+        line = f"<{tag}>{turn['label']}:</{tag}> {turn['utterance']}"
+        if "backchannel_text" in turn:
+            line += f" <i>[{turn['backchannel_label']} backchannel: {turn['backchannel_text']}]</i>"
+        lines.append(f"<p>{line}</p>")
+    return "".join(lines)
 
 
 def get_input(convo_id, modality):

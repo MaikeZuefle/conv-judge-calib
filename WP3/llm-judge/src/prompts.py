@@ -38,6 +38,18 @@ def cot_questions_prompt(questions):
     )
 
 
+def summary_questions_prompt(questions):
+    questions_block = "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1))
+    return (
+        "Listen to this conversation. For each of the following questions, give a brief summary "
+        "of the relevant parts of the conversation, rather than answering with a rating:\n\n"
+        f"{questions_block}\n\n"
+        "Then respond with only a JSON object with two fields: \"summaries\", a list of your "
+        "question-relevant summaries in order, and \"score\", your rating of how successful the "
+        "conversation is on a scale from 0 (not successful) to 10 (very successful)."
+    )
+
+
 def scaled_questions_prompt(questions):
     questions_block = "\n".join(f"{i}. (scale {lo}-{hi}) {q}" for i, (q, (lo, hi)) in enumerate(questions, 1))
     return (
@@ -61,6 +73,7 @@ PROMPTS = {
     ),
     "CoT_questions": cot_questions_prompt(CANDOR_QUESTIONS),
     "CoT_questions_liking": cot_questions_prompt(CANDOR_QUESTIONS_LIKING),
+    "CoT_questions_summary_liking": summary_questions_prompt(CANDOR_QUESTIONS_LIKING),
     "questions": scaled_questions_prompt(CANDOR_QUESTIONS_SCALED),
     "questions_liking": scaled_questions_prompt(CANDOR_QUESTIONS_LIKING_SCALED),
 }

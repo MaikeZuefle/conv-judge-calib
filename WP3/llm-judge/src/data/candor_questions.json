@@ -45,7 +45,7 @@
     "question": "How enjoyable did you find the conversation?",
     "single_speaker": false,
     "scale": [1, 9],
-    "label": "Enjoyable",
+    "label": "Enjoyability",
     "survey_column": "how_enjoyable"
   },
   {

@@ -7,10 +7,12 @@ from transformers import set_seed
 from data import candor
 from prompts import PROMPTS
 from models.qwen25omni import Qwen25Omni
+from models.avflamingo import AVFlamingo
+from models.phi4multimodal import Phi4Multimodal
 from utils import get_examples_path, log
 
 DATASETS = {"candor": candor}
-MODELS = {"qwen25omni": Qwen25Omni}
+MODELS = {"qwen25omni": Qwen25Omni, "avflamingo": AVFlamingo, "phi4multimodal": Phi4Multimodal}
 
 
 def load_done_ids(output_path):

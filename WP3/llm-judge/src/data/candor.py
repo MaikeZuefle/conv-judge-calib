@@ -48,7 +48,7 @@ def _transcript_turns(convo_id):
 
     turns = []
     for row in rows:
-        turn = {"label": labels[row["speaker"].strip()], "utterance": row["utterance"]}
+        turn = {"label": labels[row["speaker"].strip()], "utterance": row["utterance"], "start": float(row["start"])}
         if row["backchannel"]:
             turn["backchannel_label"] = labels[row["backchannel_speaker"].strip()]
             turn["backchannel_text"] = row["backchannel"]
@@ -66,12 +66,20 @@ def get_transcript(convo_id):
     return "\n".join(lines)
 
 
+def _format_timestamp(seconds):
+    return f"{int(seconds) // 60:02d}:{int(seconds) % 60:02d}"
+
+
 def get_transcript_html(convo_id):
     speaker_tags = {"Speaker A": "b", "Speaker B": "strong"}
     lines = []
     for turn in _transcript_turns(convo_id):
         tag = speaker_tags.get(turn["label"], "b")
-        line = f"<{tag}>{turn['label']}:</{tag}> {turn['utterance']}"
+        timestamp = (
+            f'<a class="ts" onclick="this.closest(\'.output_tgt\').querySelector(\'audio\').currentTime='
+            f'{turn["start"]}">[{_format_timestamp(turn["start"])}]</a> '
+        )
+        line = f"{timestamp}<{tag}>{turn['label']}:</{tag}> {turn['utterance']}"
         if "backchannel_text" in turn:
             line += f" <i>[{turn['backchannel_label']} backchannel: {turn['backchannel_text']}]</i>"
         lines.append(f"<p>{line}</p>")

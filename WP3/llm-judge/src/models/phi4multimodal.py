@@ -17,6 +17,7 @@ class Phi4Multimodal:
 
     def generate(self, prompt, content, modality="speech", max_new_tokens=512):
         import soundfile as sf
+        import torch
 
         if modality == "speech":
             audio, samplerate = sf.read(content)
@@ -34,4 +35,5 @@ class Phi4Multimodal:
         output = self.processor.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
+        torch.cuda.empty_cache()
         return output[0]

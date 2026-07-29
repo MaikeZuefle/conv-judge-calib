@@ -9,17 +9,10 @@ from prompts import PROMPTS
 from models.qwen25omni import Qwen25Omni
 from models.avflamingo import AVFlamingo
 from models.phi4multimodal import Phi4Multimodal
-from utils import get_examples_path, log
+from utils import filter_convo_ids, get_examples_path, load_done_ids, log, log_resume_status
 
 DATASETS = {"candor": candor}
 MODELS = {"qwen25omni": Qwen25Omni, "avflamingo": AVFlamingo, "phi4multimodal": Phi4Multimodal}
-
-
-def load_done_ids(output_path):
-    if not output_path.exists():
-        return set()
-    with open(output_path) as f:
-        return {json.loads(line)["id"] for line in f if line.strip()}
 
 
 def main(args):
@@ -31,23 +24,13 @@ def main(args):
     done_ids = load_done_ids(output_path)
 
     log("INFO", f"listing conversations for {args.dataset}")
-    convo_ids = dataset.list_conversations()
-    if args.categories is not None:
-        keep = set(args.categories.split(","))
-        convo_ids = [convo_id for convo_id in convo_ids if dataset.get_category(convo_id) in keep]
-        log("INFO", f"filtered to categories {sorted(keep)}: {len(convo_ids)} conversations remain")
-    if args.limit is not None:
-        convo_ids = convo_ids[: args.limit]
-        log("INFO", f"limited to first {len(convo_ids)} conversations")
+    convo_ids = filter_convo_ids(dataset, dataset.list_conversations(), args.categories, args.limit)
     prompt = PROMPTS[args.prompt]
 
     log("INFO", f"loading model {args.model}")
     model = MODELS[args.model]()
 
-    if done_ids:
-        log("INFO", f"resuming: {len(done_ids)}/{len(convo_ids)} examples already done")
-    else:
-        log("INFO", f"starting: 0/{len(convo_ids)} examples done")
+    log_resume_status(done_ids, len(convo_ids))
 
     pending = (convo_id for convo_id in convo_ids if convo_id not in done_ids)
     with open(output_path, "a") as f:

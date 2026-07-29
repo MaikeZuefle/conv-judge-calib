@@ -63,21 +63,29 @@ def scaled_questions_prompt(questions):
 
 CATEGORY_LABELS = {"HSC": "high success", "MSC": "medium success", "LSC": "low success"}
 
-CATEGORY_QUESTIONS_BLOCK = (
-    "1. Across the conversation as a whole, how positive or negative does the speakers' "
-    "apparent mood seem overall?\n"
-    "2. At the beginning of the conversation, how positive or negative does the speakers' "
-    "apparent mood seem overall?\n"
-    "3. Around the middle of the conversation, how positive or negative does the speakers' "
-    "apparent mood seem overall?\n"
-    "4. Toward the end of the conversation, how positive or negative does the speakers' "
-    "apparent mood seem overall?\n"
-    "5. At the most positive moment of the conversation, how positive or negative do the "
-    "speakers' apparent mood seem overall?\n"
-    "6. How enjoyable does the conversation appear to be for the speakers?\n"
-    "7. To what extent do the two speakers appear to like each other?\n"
-    "8. How well do the two speakers appear to get along with each other?"
-)
+CATEGORY_QUESTIONS = [
+    "Across the conversation as a whole, how positive or negative does the speakers' apparent "
+    "mood seem overall?",
+    "At the beginning of the conversation, how positive or negative does the speakers' apparent "
+    "mood seem overall?",
+    "Around the middle of the conversation, how positive or negative does the speakers' apparent "
+    "mood seem overall?",
+    "Toward the end of the conversation, how positive or negative does the speakers' apparent "
+    "mood seem overall?",
+    "At the most positive moment of the conversation, how positive or negative do the speakers' "
+    "apparent mood seem overall?",
+    "How enjoyable does the conversation appear to be for the speakers?",
+    "To what extent do the two speakers appear to like each other?",
+    "How well do the two speakers appear to get along with each other?",
+]
+
+# subset used for judging a single third of a conversation: the start/mid/end mood questions are
+# dropped since "overall mood" already covers the whole clip when the model only hears one part
+PART_QUESTIONS = [CATEGORY_QUESTIONS[i] for i in (0, 4, 5, 6, 7)]
+
+
+def _questions_block(questions):
+    return "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1))
 
 
 def category_prompt(categories):
@@ -85,13 +93,38 @@ def category_prompt(categories):
     quoted = " or ".join(f'"{c}"' for c in categories)
     return (
         "Listen to this conversation. Answer the following questions about it:\n\n"
-        f"{CATEGORY_QUESTIONS_BLOCK}\n\n"
+        f"{_questions_block(CATEGORY_QUESTIONS)}\n\n"
         "Your answers to these questions should determine how successful the conversation was "
         f"overall. Based on them, classify the conversation into exactly one of {len(categories)} "
         f"categories: {options}.\n\n"
         "Then respond with only a JSON object with two fields: \"answers\", a list of your "
         "answers to the questions above in order, and \"category\", your classification of the "
         f"conversation as one of {quoted}."
+    )
+
+
+def part_summary_prompt(questions):
+    return (
+        "Listen to this conversation. For each of the following questions, give a brief summary "
+        "of the relevant parts of the conversation:\n\n"
+        f"{_questions_block(questions)}\n\n"
+        "Then respond with only a JSON object with one field: \"summaries\", a list of your "
+        "question-relevant summaries in order."
+    )
+
+
+def aggregate_category_prompt(categories):
+    options = ", ".join(f"{c} ({CATEGORY_LABELS[c]})" for c in categories)
+    quoted = " or ".join(f'"{c}"' for c in categories)
+    return (
+        "Below are question-relevant summaries of three consecutive parts of a conversation, "
+        "covering the speakers' mood, enjoyment, and how well they got along, given in "
+        "chronological order.\n\n"
+        "Based on all three parts together, respond with only a JSON object with two fields: "
+        '"score", your rating of how successful the conversation is on a scale from 0 (not '
+        'successful) to 10 (very successful), and "category", your classification of the '
+        f"conversation into exactly one of {len(categories)} categories: {options}. Respond with "
+        f'"category" as one of {quoted}.'
     )
 
 

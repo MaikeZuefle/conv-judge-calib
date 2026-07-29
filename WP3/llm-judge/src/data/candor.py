@@ -1,4 +1,5 @@
 import csv
+import tempfile
 from functools import cache
 from pathlib import Path
 
@@ -56,14 +57,61 @@ def _transcript_turns(convo_id):
     return turns
 
 
-def get_transcript(convo_id):
+def _format_transcript(turns):
     lines = []
-    for turn in _transcript_turns(convo_id):
+    for turn in turns:
         line = f"{turn['label']}: {turn['utterance']}"
         if "backchannel_text" in turn:
             line += f" [{turn['backchannel_label']} backchannel: {turn['backchannel_text']}]"
         lines.append(line)
     return "\n".join(lines)
+
+
+def get_transcript(convo_id):
+    return _format_transcript(_transcript_turns(convo_id))
+
+
+def _part_boundaries(turns, n_parts):
+    """Return the n_parts-1 cut times (in seconds) splitting turns into n_parts, each cut
+    snapped to the start of the closest actual turn so a cut never lands mid-utterance."""
+    total = turns[-1]["start"]
+    targets = [total * i / n_parts for i in range(1, n_parts)]
+    return [min(turns, key=lambda t: abs(t["start"] - target))["start"] for target in targets]
+
+
+def _turns_for_part(turns, part_idx, n_parts):
+    boundaries = _part_boundaries(turns, n_parts)
+    lo = boundaries[part_idx - 1] if part_idx > 0 else 0.0
+    hi = boundaries[part_idx] if part_idx < len(boundaries) else None
+    return [t for t in turns if t["start"] >= lo and (hi is None or t["start"] < hi)]
+
+
+def get_transcript_part(convo_id, part_idx, n_parts=3):
+    turns = _turns_for_part(_transcript_turns(convo_id), part_idx, n_parts)
+    return _format_transcript(turns)
+
+
+def get_audio_part_path(convo_id, part_idx, n_parts=3):
+    import soundfile as sf
+
+    turns = _transcript_turns(convo_id)
+    boundaries = _part_boundaries(turns, n_parts)
+    lo = boundaries[part_idx - 1] if part_idx > 0 else 0.0
+    hi = boundaries[part_idx] if part_idx < len(boundaries) else None
+
+    data, samplerate = sf.read(get_audio_path(convo_id))
+    start_sample = int(lo * samplerate)
+    end_sample = int(hi * samplerate) if hi is not None else len(data)
+
+    out_path = Path(tempfile.gettempdir()) / f"{convo_id}_part{part_idx}of{n_parts}.wav"
+    sf.write(out_path, data[start_sample:end_sample], samplerate)
+    return str(out_path)
+
+
+def get_input_part(convo_id, modality, part_idx, n_parts=3):
+    if modality == "text":
+        return get_transcript_part(convo_id, part_idx, n_parts)
+    return get_audio_part_path(convo_id, part_idx, n_parts)
 
 
 def _format_timestamp(seconds):

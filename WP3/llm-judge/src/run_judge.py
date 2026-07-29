@@ -32,6 +32,13 @@ def main(args):
 
     log("INFO", f"listing conversations for {args.dataset}")
     convo_ids = dataset.list_conversations()
+    if args.categories is not None:
+        keep = set(args.categories.split(","))
+        convo_ids = [convo_id for convo_id in convo_ids if dataset.get_category(convo_id) in keep]
+        log("INFO", f"filtered to categories {sorted(keep)}: {len(convo_ids)} conversations remain")
+    if args.limit is not None:
+        convo_ids = convo_ids[: args.limit]
+        log("INFO", f"limited to first {len(convo_ids)} conversations")
     prompt = PROMPTS[args.prompt]
 
     log("INFO", f"loading model {args.model}")
@@ -63,5 +70,7 @@ if __name__ == "__main__":
     parser.add_argument("--input_modality", default="speech", choices=["speech", "text"])
     parser.add_argument("--output_folder", default="outputs")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--categories", default=None, help="comma-separated category allowlist, e.g. HSC,LSC")
+    parser.add_argument("--limit", type=int, default=None, help="only process the first N conversations")
     args = parser.parse_args()
     main(args)

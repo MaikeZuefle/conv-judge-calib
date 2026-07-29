@@ -61,6 +61,40 @@ def scaled_questions_prompt(questions):
     )
 
 
+CATEGORY_LABELS = {"HSC": "high success", "MSC": "medium success", "LSC": "low success"}
+
+CATEGORY_QUESTIONS_BLOCK = (
+    "1. Across the conversation as a whole, how positive or negative does the speakers' "
+    "apparent mood seem overall?\n"
+    "2. At the beginning of the conversation, how positive or negative does the speakers' "
+    "apparent mood seem overall?\n"
+    "3. Around the middle of the conversation, how positive or negative does the speakers' "
+    "apparent mood seem overall?\n"
+    "4. Toward the end of the conversation, how positive or negative does the speakers' "
+    "apparent mood seem overall?\n"
+    "5. At the most positive moment of the conversation, how positive or negative do the "
+    "speakers' apparent mood seem overall?\n"
+    "6. How enjoyable does the conversation appear to be for the speakers?\n"
+    "7. To what extent do the two speakers appear to like each other?\n"
+    "8. How well do the two speakers appear to get along with each other?"
+)
+
+
+def category_prompt(categories):
+    options = ", ".join(f"{c} ({CATEGORY_LABELS[c]})" for c in categories)
+    quoted = " or ".join(f'"{c}"' for c in categories)
+    return (
+        "Listen to this conversation. Answer the following questions about it:\n\n"
+        f"{CATEGORY_QUESTIONS_BLOCK}\n\n"
+        "Your answers to these questions should determine how successful the conversation was "
+        f"overall. Based on them, classify the conversation into exactly one of {len(categories)} "
+        f"categories: {options}.\n\n"
+        "Then respond with only a JSON object with two fields: \"answers\", a list of your "
+        "answers to the questions above in order, and \"category\", your classification of the "
+        f"conversation as one of {quoted}."
+    )
+
+
 PROMPTS = {
     "success": (
         "Listen to this conversation. Rate how successful it is on a scale "
@@ -76,26 +110,6 @@ PROMPTS = {
     "CoT_questions_summary_liking": summary_questions_prompt(CANDOR_QUESTIONS_LIKING),
     "questions": scaled_questions_prompt(CANDOR_QUESTIONS_SCALED),
     "questions_liking": scaled_questions_prompt(CANDOR_QUESTIONS_LIKING_SCALED),
-    "CoT_category": (
-        "Listen to this conversation. Answer the following questions about it:\n\n"
-        "1. Across the conversation as a whole, how positive or negative does the speakers' "
-        "apparent mood seem overall?\n"
-        "2. At the beginning of the conversation, how positive or negative does the speakers' "
-        "apparent mood seem overall?\n"
-        "3. Around the middle of the conversation, how positive or negative does the speakers' "
-        "apparent mood seem overall?\n"
-        "4. Toward the end of the conversation, how positive or negative does the speakers' "
-        "apparent mood seem overall?\n"
-        "5. At the most positive moment of the conversation, how positive or negative do the "
-        "speakers' apparent mood seem overall?\n"
-        "6. How enjoyable does the conversation appear to be for the speakers?\n"
-        "7. To what extent do the two speakers appear to like each other?\n"
-        "8. How well do the two speakers appear to get along with each other?\n\n"
-        "Your answers to these questions should determine how successful the conversation was "
-        "overall. Based on them, classify the conversation into exactly one of three categories: "
-        "HSC (high success), MSC (medium success), or LSC (low success).\n\n"
-        "Then respond with only a JSON object with two fields: \"answers\", a list of your "
-        "answers to the questions above in order, and \"category\", your classification of the "
-        'conversation as one of "HSC", "MSC", or "LSC".'
-    ),
+    "CoT_category": category_prompt(["HSC", "MSC", "LSC"]),
+    "CoT_category_hsc_lsc": category_prompt(["HSC", "LSC"]),
 }

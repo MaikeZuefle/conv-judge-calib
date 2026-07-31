@@ -19,6 +19,34 @@ All scripts are **pure Python standard library** (`fetch_annotations.py` additio
 
 ---
 
+## Example run and sanity check
+
+Run the split using at most two features/question to determine a split. Note that increasing this `--max-combo` value quickly requires a lot of memory. Increasing it to e.g. 5 already requires more than 32GB of memory due to the high number of combinations.
+
+```
+python annotation_split.py --metrics all_surveys_raw.csv --group-by convo_id --max-combo 2 --margin 1.5 --out-json try01_full.json --write-partitions
+```
+
+This command creates a `paritions` subdirectory with separate `.csv` files for each combination. To run a sanity check of the created paritions, you can run `sanity_check_partitions.py`:
+
+```
+python sanity_check_partitions.py partitions/affect+best_arousal__assignment.csv --metrics all_surveys_raw.csv
+```
+
+This is output something like:
+
+```
+== affect+best_arousal__assignment.csv ==
+features: affect+best_arousal   id: convo_id
+sizes: low=113 high=113 mid=225 unmatched=0
+composite (high vs low): cohens_d=5.8279 auc=1.0000 p=0.00e+00 z_gap=1.2509
+per-column (high vs low):
+    column                       high_mean  low_mean  raw_diff  cohens_d     auc
+    affect                          8.4071    6.1416    2.2655    3.3905  0.9906
+    best_arousal                    8.4690    5.7301    2.7389    3.9692  0.9977
+label_mix: low={'': 113} high={'': 113} mid={'': 225}
+```
+
 ## Data model
 
 CANDOR ground-truth annotations come from the post-conversation **survey** each participant

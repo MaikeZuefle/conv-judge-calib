@@ -24,7 +24,9 @@
   button { font-size:13px; padding:5px 10px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; }
   button:hover { background:#f1f3f5; }
   button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .status { font-size:12px; color:var(--muted); margin:8px 0; }
+  .status { font-size:12px; color:var(--muted); margin:8px 0 2px; }
+  .hint { font-size:12px; color:var(--muted); margin:0 0 8px; }
+  thead th .lbl { text-decoration: underline dotted; text-underline-offset:3px; text-decoration-color:#b0b7bf; }
   table { border-collapse:collapse; width:100%; font-size:13px; }
   thead th { position:sticky; top:0; background:#f6f8fa; border-bottom:2px solid var(--line); text-align:right; padding:7px 9px; cursor:pointer; white-space:nowrap; user-select:none; }
   thead th.left { text-align:left; }
@@ -99,6 +101,7 @@
     </div>
 
     <div id="status" class="status"></div>
+    <div class="hint">Tip: hover a column header (dotted underline) for its definition · click a header to sort · click a row to expand · click a feature chip to filter.</div>
 
     <table id="tbl">
       <thead><tr id="head"></tr></thead>
@@ -121,16 +124,26 @@
 
 // ---- Column definitions for the main table -------------------------------
 const COLS = [
-  { key:"features",            label:"features",  left:true,  get:r=>r.__feat },
-  { key:"nfeat",               label:"#",         get:r=>r.features.length },
-  { key:"n_used",              label:"n",         get:r=>r.n_used },
-  { key:"group_size",          label:"grp",       get:r=>r.group_size },
-  { key:"cohens_d",            label:"comp. d",   get:r=>r.score.cohens_d,  fmt:v=>v.toFixed(3) },
-  { key:"auc",                 label:"AUC",       get:r=>r.score.auc,       fmt:v=>v.toFixed(3) },
-  { key:"p_value",             label:"p",         get:r=>r.score.p_value,   fmt:fmtP },
-  { key:"z_gap",               label:"z-gap",     get:r=>r.score.z_gap,     fmt:v=>v.toFixed(3) },
-  { key:"min_column_cohens_d", label:"min col d", get:r=>r.min_column_cohens_d, fmt:v=>v.toFixed(3) },
-  { key:"qualified",           label:"qual",      get:r=>r.qualified, fmt:v=>v?"✓":"✗" },
+  { key:"features", label:"features", left:true, get:r=>r.__feat,
+    desc:"The annotation column(s) whose combined z-score defines this split. Click a chip to filter to splits containing it. Click the header to sort A→Z." },
+  { key:"nfeat", label:"#", get:r=>r.features.length,
+    desc:"Number of features combined in this split (1 = single annotation, 2 = pair, …)." },
+  { key:"n_used", label:"n", get:r=>r.n_used,
+    desc:"Number of conversations this split could score (low + high + mid). Sparse features score fewer." },
+  { key:"group_size", label:"grp", get:r=>r.group_size,
+    desc:"Size of each partition — the LOW and the HIGH group each contain this many conversations (top/bottom group-frac; the middle band is discarded)." },
+  { key:"cohens_d", label:"comp. d", get:r=>r.score.cohens_d, fmt:v=>v.toFixed(3),
+    desc:"Composite Cohen's d: standardized mean difference between HIGH and LOW on the combined z-score. Higher = more separated (≈0.8 large, >2 very large)." },
+  { key:"auc", label:"AUC", get:r=>r.score.auc, fmt:v=>v.toFixed(3),
+    desc:"Common-language effect size: probability a random HIGH conversation scores above a random LOW one. 0.5 = no separation, 1.0 = perfect." },
+  { key:"p_value", label:"p", get:r=>r.score.p_value, fmt:fmtP,
+    desc:"Two-sided Mann–Whitney U p-value (tie-corrected normal approx.) for the HIGH-vs-LOW difference on the composite score." },
+  { key:"z_gap", label:"z-gap", get:r=>r.score.z_gap, fmt:v=>v.toFixed(3),
+    desc:"Gap between the two partitions in z-score units (min HIGH score − max LOW score). > 0 means the LOW and HIGH bands do not overlap." },
+  { key:"min_column_cohens_d", label:"min col d", get:r=>r.min_column_cohens_d, fmt:v=>v.toFixed(3),
+    desc:"For multi-feature splits, the smallest per-feature Cohen's d — i.e. the weakest-separating constituent column. Equals comp. d for single-feature splits." },
+  { key:"qualified", label:"qual", get:r=>r.qualified, fmt:v=>v?"✓":"✗",
+    desc:"✓ if the split cleared the run's margin/metric (and alpha, if set). ✗ only appears when the run was made with --all-combos." },
 ];
 
 let DATA = null;      // full parsed object
@@ -257,7 +270,8 @@ function buildHead(){
     const th=document.createElement("th");
     th.className = c.left ? "left" : "num";
     th.dataset.key = c.key;
-    th.textContent = c.label + " ";
+    th.innerHTML = `<span class="lbl">${c.label}</span>`;
+    if(c.desc) th.title = c.desc + "\n\n(click to sort)";
     th.onclick = ()=>{
       const sk=document.getElementById("sortKey"), sd=document.getElementById("sortDir");
       if(sk.value===c.key){ sd.value = sd.value==="desc" ? "asc" : "desc"; }
@@ -270,7 +284,8 @@ function buildHead(){
 function renderHeadArrows(f){
   document.querySelectorAll("#head th").forEach(th=>{
     const base = COLS.find(c=>c.key===th.dataset.key).label;
-    th.innerHTML = base + (th.dataset.key===f.sortKey ? ` <span class="arrow">${f.sortDir==="asc"?"▲":"▼"}</span>` : "");
+    const arrow = th.dataset.key===f.sortKey ? ` <span class="arrow">${f.sortDir==="asc"?"▲":"▼"}</span>` : "";
+    th.innerHTML = `<span class="lbl">${base}</span>${arrow}`;
   });
 }
 
@@ -322,7 +337,13 @@ function detailHtml(r){
   const cols = Object.entries(r.per_column||{});
   const maxAbsD = Math.max(1e-9, ...cols.map(([,c])=>Math.abs(c.cohens_d||0)));
   let pc = `<h4>per-column separation (high vs low)</h4><table><tr>
-    <th style="text-align:left">column</th><th>high_mean</th><th>low_mean</th><th>raw_diff</th><th>cohens_d</th><th>auc</th><th></th></tr>`;
+    <th style="text-align:left" title="Annotation column">column</th>
+    <th title="Mean of this column over the HIGH partition (raw units)">high_mean</th>
+    <th title="Mean of this column over the LOW partition (raw units)">low_mean</th>
+    <th title="high_mean − low_mean, in the column's raw units">raw_diff</th>
+    <th title="Standardized mean difference (HIGH − LOW) for this column">cohens_d</th>
+    <th title="P(random HIGH value > random LOW value) on this column; 0.5 = none, 1 = perfect">auc</th>
+    <th title="Bar proportional to |cohens_d| across this split's columns"></th></tr>`;
   cols.forEach(([name,c])=>{
     const w = Math.round(70*Math.abs(c.cohens_d||0)/maxAbsD);
     pc += `<tr><td style="text-align:left">${escapeHtml(name)}</td>

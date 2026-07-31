@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CANDOR annotation splits browser</title>
+<style>
+  :root { --fg:#1b1f23; --muted:#6a737d; --line:#e1e4e8; --accent:#0366d6; --lo:#b31d28; --hi:#176f2c; --bg:#fff; --chip:#f1f3f5; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:0; color:var(--fg); background:var(--bg); }
+  header { padding:14px 18px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:5; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:12px; }
+  main { padding:14px 18px 60px; }
+  .mono, td.num, th.num { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .params { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--muted); margin:8px 0; }
+  .params b { color:var(--fg); font-weight:600; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:flex-end; margin:12px 0; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fafbfc; }
+  .controls label { display:flex; flex-direction:column; font-size:11px; color:var(--muted); gap:3px; }
+  .controls input, .controls select { font-size:13px; padding:4px 6px; border:1px solid var(--line); border-radius:5px; background:#fff; }
+  .controls input[type=text]{ min-width:220px; }
+  .controls input[type=number]{ width:90px; }
+  .controls .chk { flex-direction:row; align-items:center; gap:6px; font-size:12px; color:var(--fg); }
+  button { font-size:13px; padding:5px 10px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; }
+  button:hover { background:#f1f3f5; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .status { font-size:12px; color:var(--muted); margin:8px 0; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  thead th { position:sticky; top:0; background:#f6f8fa; border-bottom:2px solid var(--line); text-align:right; padding:7px 9px; cursor:pointer; white-space:nowrap; user-select:none; }
+  thead th.left { text-align:left; }
+  thead th .arrow { color:var(--accent); font-size:10px; }
+  tbody td { border-bottom:1px solid var(--line); padding:6px 9px; text-align:right; }
+  tbody td.left { text-align:left; }
+  tbody tr.row { cursor:pointer; }
+  tbody tr.row:hover { background:#f6fbff; }
+  tbody tr.row.open { background:#eef6ff; }
+  .chip { display:inline-block; background:var(--chip); border:1px solid var(--line); border-radius:12px; padding:1px 8px; margin:1px 3px 1px 0; font-size:12px; cursor:pointer; }
+  .chip:hover { border-color:var(--accent); color:var(--accent); }
+  .fail { color:var(--lo); font-weight:600; }
+  .ok { color:var(--hi); }
+  .detail td { background:#fbfdff; padding:12px 16px; }
+  .detail h4 { margin:0 0 6px; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .detail table { width:auto; margin:0 24px 10px 0; display:inline-table; vertical-align:top; }
+  .detail table td, .detail table th { border-bottom:1px solid var(--line); padding:3px 10px; font-size:12px; }
+  .bar { display:inline-block; height:9px; background:var(--accent); border-radius:2px; vertical-align:middle; }
+  .pager { display:flex; gap:8px; align-items:center; margin:12px 0; font-size:13px; flex-wrap:wrap; }
+  .drop { border:2px dashed var(--line); border-radius:10px; padding:36px; text-align:center; color:var(--muted); margin:24px 0; }
+  .drop.hl { border-color:var(--accent); color:var(--accent); background:#f6fbff; }
+  code { background:var(--chip); padding:1px 5px; border-radius:4px; font-size:12px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CANDOR annotation splits browser</h1>
+  <div class="sub">Load a results JSON from <code>annotation_split.py --out-json</code> (e.g. <code>try01_full.json</code>) and browse the splits.</div>
+  <div id="paramsBar" class="params hidden"></div>
+</header>
+
+<main>
+  <div id="loader">
+    <div id="drop" class="drop">
+      <p><b>Drop a results JSON here</b>, or <input type="file" id="file" accept=".json,application/json" /></p>
+      <p class="sub">Everything runs locally in your browser — nothing is uploaded.</p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="controls">
+      <label>Search feature<input type="text" id="q" placeholder="e.g. affect, in_common" /></label>
+      <label>Feature count
+        <select id="nfeat"><option value="">any</option></select>
+      </label>
+      <label>min composite d<input type="number" id="minD" step="0.1" placeholder="0" /></label>
+      <label>min per-column d<input type="number" id="minColD" step="0.1" placeholder="0" /></label>
+      <label>max p-value<input type="number" id="maxP" step="0.001" placeholder="1" /></label>
+      <label class="chk"><input type="checkbox" id="qualOnly" /> qualified only</label>
+      <label>Sort by
+        <select id="sortKey">
+          <option value="margin">margin metric</option>
+          <option value="cohens_d">composite d</option>
+          <option value="auc">composite AUC</option>
+          <option value="p_value">p-value</option>
+          <option value="z_gap">z-gap</option>
+          <option value="min_column_cohens_d">min col d</option>
+          <option value="n_used">n used</option>
+          <option value="nfeat">#features</option>
+          <option value="features">features (a→z)</option>
+        </select>
+      </label>
+      <label>Dir
+        <select id="sortDir"><option value="desc">▼ desc</option><option value="asc">▲ asc</option></select>
+      </label>
+      <label>Page size
+        <select id="pageSize"><option>50</option><option selected>100</option><option>250</option><option>500</option></select>
+      </label>
+      <button id="reset">Reset</button>
+      <button id="loadNew">Load another…</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <table id="tbl">
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+
+    <div class="pager">
+      <button id="first">« first</button>
+      <button id="prev">‹ prev</button>
+      <span id="pageInfo" class="mono"></span>
+      <button id="next">next ›</button>
+      <button id="last">last »</button>
+      <span>go to <input type="number" id="jump" style="width:70px" min="1" /></span>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---- Column definitions for the main table -------------------------------
+const COLS = [
+  { key:"features",            label:"features",  left:true,  get:r=>r.__feat },
+  { key:"nfeat",               label:"#",         get:r=>r.features.length },
+  { key:"n_used",              label:"n",         get:r=>r.n_used },
+  { key:"group_size",          label:"grp",       get:r=>r.group_size },
+  { key:"cohens_d",            label:"comp. d",   get:r=>r.score.cohens_d,  fmt:v=>v.toFixed(3) },
+  { key:"auc",                 label:"AUC",       get:r=>r.score.auc,       fmt:v=>v.toFixed(3) },
+  { key:"p_value",             label:"p",         get:r=>r.score.p_value,   fmt:fmtP },
+  { key:"z_gap",               label:"z-gap",     get:r=>r.score.z_gap,     fmt:v=>v.toFixed(3) },
+  { key:"min_column_cohens_d", label:"min col d", get:r=>r.min_column_cohens_d, fmt:v=>v.toFixed(3) },
+  { key:"qualified",           label:"qual",      get:r=>r.qualified, fmt:v=>v?"✓":"✗" },
+];
+
+let DATA = null;      // full parsed object
+let ROWS = [];        // results with derived fields
+let VIEW = [];        // filtered + sorted
+let PAGE = 0;
+
+function fmtP(v){ if(v===0) return "0"; if(v==null) return "—"; return v<1e-4 ? v.toExponential(1) : v.toFixed(4); }
+function fmtNum(v){ return (v==null || Number.isNaN(v)) ? "—" : (typeof v==="number" ? (Number.isInteger(v)?v:v.toFixed(4)) : v); }
+
+// margin value depends on the run's margin_metric (mirrors annotation_split.margin_value)
+function marginValue(r){
+  const m = (DATA.params && DATA.params.margin_metric) || "cohens_d";
+  if(m==="auc") return Math.abs(r.score.auc - 0.5) * 2;
+  if(m==="raw_gap") return r.score.z_gap;
+  return Math.abs(r.score.cohens_d);
+}
+
+// ---- Loading -------------------------------------------------------------
+function ingest(obj){
+  DATA = obj;
+  ROWS = (obj.results || []).map(r => { r.__feat = r.features.join(" + "); r.__margin = marginValue(r); return r; });
+  buildParamsBar();
+  buildHead();
+  populateNfeat();
+  document.getElementById("loader").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("paramsBar").classList.remove("hidden");
+  PAGE = 0;
+  refresh();
+}
+
+function loadText(text){
+  let obj;
+  try { obj = JSON.parse(text); }
+  catch(e){ alert("Could not parse JSON: " + e.message); return; }
+  if(!obj || !Array.isArray(obj.results)){ alert("This does not look like an annotation_split results file (missing 'results' array)."); return; }
+  ingest(obj);
+}
+
+function buildParamsBar(){
+  const p = DATA.params || {};
+  const items = [
+    ["metrics", (p.metrics||"").split("/").pop()],
+    ["id", (p.id_cols||[]).join("/")],
+    ["group_by", p.group_by ? (p.group_by.join("/")+" ("+p.group_agg+")") : "—"],
+    ["combos", (p.min_combo)+"–"+(p.max_combo)],
+    ["group_frac", p.group_frac],
+    ["margin", p.margin + " " + p.margin_metric],
+    ["candidates", DATA.n_candidates],
+    ["qualified", DATA.n_qualified],
+    ["results", DATA.n_results ?? ROWS.length],
+  ];
+  document.getElementById("paramsBar").innerHTML =
+    items.map(([k,v])=>`<span>${k}: <b>${v}</b></span>`).join("");
+}
+
+function populateNfeat(){
+  const counts = {};
+  ROWS.forEach(r => { const n=r.features.length; counts[n]=(counts[n]||0)+1; });
+  const sel = document.getElementById("nfeat");
+  sel.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());
+  Object.keys(counts).map(Number).sort((a,b)=>a-b).forEach(n=>{
+    const o=document.createElement("option"); o.value=String(n); o.textContent=`${n} (${counts[n]})`; sel.appendChild(o);
+  });
+}
+
+// ---- Filtering / sorting / paging ---------------------------------------
+function currentFilters(){
+  return {
+    q: document.getElementById("q").value.trim().toLowerCase(),
+    nfeat: document.getElementById("nfeat").value,
+    minD: parseFloat(document.getElementById("minD").value),
+    minColD: parseFloat(document.getElementById("minColD").value),
+    maxP: parseFloat(document.getElementById("maxP").value),
+    qualOnly: document.getElementById("qualOnly").checked,
+    sortKey: document.getElementById("sortKey").value,
+    sortDir: document.getElementById("sortDir").value,
+    pageSize: parseInt(document.getElementById("pageSize").value, 10),
+  };
+}
+
+function sortAccessor(key){
+  if(key==="margin") return r=>r.__margin;
+  if(key==="features") return r=>r.__feat;
+  if(key==="nfeat") return r=>r.features.length;
+  if(["cohens_d","auc","p_value","z_gap"].includes(key)) return r=>r.score[key];
+  return r=>r[key];
+}
+
+function refresh(){
+  const f = currentFilters();
+  VIEW = ROWS.filter(r=>{
+    if(f.q && !r.__feat.toLowerCase().includes(f.q)) return false;
+    if(f.nfeat && r.features.length !== +f.nfeat) return false;
+    if(!Number.isNaN(f.minD) && Math.abs(r.score.cohens_d) < f.minD) return false;
+    if(!Number.isNaN(f.minColD) && r.min_column_cohens_d < f.minColD) return false;
+    if(!Number.isNaN(f.maxP) && r.score.p_value > f.maxP) return false;
+    if(f.qualOnly && !r.qualified) return false;
+    return true;
+  });
+  const acc = sortAccessor(f.sortKey);
+  const dir = f.sortDir==="asc" ? 1 : -1;
+  VIEW.sort((a,b)=>{
+    const va=acc(a), vb=acc(b);
+    if(typeof va==="string") return dir*va.localeCompare(vb);
+    return dir*((va>vb)-(va<vb));
+  });
+  const maxPage = Math.max(0, Math.ceil(VIEW.length / f.pageSize) - 1);
+  if(PAGE>maxPage) PAGE = maxPage;
+  renderHeadArrows(f);
+  renderBody(f);
+  renderPager(f, maxPage);
+  document.getElementById("status").textContent =
+    `Showing ${VIEW.length.toLocaleString()} of ${ROWS.length.toLocaleString()} splits` +
+    (f.q||f.nfeat||!Number.isNaN(f.minD)||!Number.isNaN(f.minColD)||!Number.isNaN(f.maxP)||f.qualOnly ? " (filtered)" : "");
+}
+
+// ---- Rendering -----------------------------------------------------------
+function buildHead(){
+  const tr = document.getElementById("head");
+  tr.innerHTML = "";
+  COLS.forEach(c=>{
+    const th=document.createElement("th");
+    th.className = c.left ? "left" : "num";
+    th.dataset.key = c.key;
+    th.textContent = c.label + " ";
+    th.onclick = ()=>{
+      const sk=document.getElementById("sortKey"), sd=document.getElementById("sortDir");
+      if(sk.value===c.key){ sd.value = sd.value==="desc" ? "asc" : "desc"; }
+      else { sk.value = [...sk.options].some(o=>o.value===c.key) ? c.key : "margin"; sd.value="desc"; }
+      refresh();
+    };
+    tr.appendChild(th);
+  });
+}
+function renderHeadArrows(f){
+  document.querySelectorAll("#head th").forEach(th=>{
+    const base = COLS.find(c=>c.key===th.dataset.key).label;
+    th.innerHTML = base + (th.dataset.key===f.sortKey ? ` <span class="arrow">${f.sortDir==="asc"?"▲":"▼"}</span>` : "");
+  });
+}
+
+function renderBody(f){
+  const body = document.getElementById("body");
+  body.innerHTML = "";
+  const start = PAGE*f.pageSize;
+  const slice = VIEW.slice(start, start+f.pageSize);
+  const frag = document.createDocumentFragment();
+  slice.forEach(r=>{
+    const tr=document.createElement("tr");
+    tr.className="row";
+    COLS.forEach(c=>{
+      const td=document.createElement("td");
+      td.className = c.left ? "left" : "num";
+      let v = c.get(r);
+      if(c.key==="features"){
+        td.innerHTML = r.features.map(x=>`<span class="chip" data-feat="${escapeAttr(x)}">${escapeHtml(x)}</span>`).join("");
+      } else if(c.key==="qualified"){
+        td.innerHTML = `<span class="${v?'ok':'fail'}">${c.fmt(v)}</span>`;
+      } else {
+        td.textContent = c.fmt ? c.fmt(v) : fmtNum(v);
+      }
+      tr.appendChild(td);
+    });
+    tr.onclick = (e)=>{
+      if(e.target.classList.contains("chip")){ document.getElementById("q").value = e.target.dataset.feat; PAGE=0; refresh(); return; }
+      toggleDetail(tr, r);
+    };
+    frag.appendChild(tr);
+  });
+  body.appendChild(frag);
+}
+
+function toggleDetail(tr, r){
+  if(tr.nextSibling && tr.nextSibling.classList && tr.nextSibling.classList.contains("detail")){
+    tr.nextSibling.remove(); tr.classList.remove("open"); return;
+  }
+  document.querySelectorAll("tr.detail").forEach(d=>{ d.previousSibling && d.previousSibling.classList.remove("open"); d.remove(); });
+  tr.classList.add("open");
+  const dr=document.createElement("tr"); dr.className="detail";
+  const td=document.createElement("td"); td.colSpan=COLS.length;
+  td.innerHTML = detailHtml(r);
+  dr.appendChild(td); tr.after(dr);
+}
+
+function detailHtml(r){
+  // per-column table
+  const cols = Object.entries(r.per_column||{});
+  const maxAbsD = Math.max(1e-9, ...cols.map(([,c])=>Math.abs(c.cohens_d||0)));
+  let pc = `<h4>per-column separation (high vs low)</h4><table><tr>
+    <th style="text-align:left">column</th><th>high_mean</th><th>low_mean</th><th>raw_diff</th><th>cohens_d</th><th>auc</th><th></th></tr>`;
+  cols.forEach(([name,c])=>{
+    const w = Math.round(70*Math.abs(c.cohens_d||0)/maxAbsD);
+    pc += `<tr><td style="text-align:left">${escapeHtml(name)}</td>
+      <td class="num">${fmtNum(c.high_mean)}</td><td class="num">${fmtNum(c.low_mean)}</td>
+      <td class="num">${fmtNum(c.raw_diff)}</td><td class="num">${fmtNum(c.cohens_d)}</td>
+      <td class="num">${fmtNum(c.auc)}</td><td><span class="bar" style="width:${w}px"></span></td></tr>`;
+  });
+  pc += `</table>`;
+
+  // label mix
+  let lm = "";
+  if(r.label_mix){
+    lm = `<h4>label mix</h4><table><tr><th style="text-align:left">group</th><th style="text-align:left">labels</th></tr>`;
+    ["low","high","mid"].forEach(g=>{
+      const m = r.label_mix[g]||{};
+      const s = Object.entries(m).map(([k,v])=>`${k===""?"(unlabeled)":escapeHtml(k)}: <b>${v}</b>`).join(", ") || "—";
+      lm += `<tr><td style="text-align:left"><b>${g}</b></td><td style="text-align:left">${s}</td></tr>`;
+    });
+    lm += `</table>`;
+  }
+
+  // score + optional ids
+  const s=r.score;
+  let sc = `<h4>score</h4><table>
+    <tr><td>composite cohens_d</td><td class="num">${fmtNum(s.cohens_d)}</td></tr>
+    <tr><td>AUC</td><td class="num">${fmtNum(s.auc)}</td></tr>
+    <tr><td>p-value</td><td class="num">${fmtP(s.p_value)}</td></tr>
+    <tr><td>z-gap</td><td class="num">${fmtNum(s.z_gap)}</td></tr>
+    <tr><td>n_used / group_size</td><td class="num">${r.n_used} / ${r.group_size}</td></tr>
+    <tr><td>qualified</td><td class="num">${r.qualified?"✓":"✗"}</td></tr></table>`;
+
+  let ids = "";
+  if(r.low_ids || r.high_ids){
+    const list = (a)=> (a||[]).slice(0,200).join("\n") + ((a&&a.length>200)?`\n… (+${a.length-200} more)`:"");
+    ids = `<h4>member ids (low / high)</h4>
+      <table><tr><th style="text-align:left">low (${(r.low_ids||[]).length})</th><th style="text-align:left">high (${(r.high_ids||[]).length})</th></tr>
+      <tr><td style="text-align:left"><pre style="margin:0;max-height:180px;overflow:auto;font-size:11px">${escapeHtml(list(r.low_ids))}</pre></td>
+          <td style="text-align:left"><pre style="margin:0;max-height:180px;overflow:auto;font-size:11px">${escapeHtml(list(r.high_ids))}</pre></td></tr></table>`;
+  }
+  return sc + pc + lm + ids;
+}
+
+function renderPager(f, maxPage){
+  document.getElementById("pageInfo").textContent = `page ${VIEW.length? PAGE+1:0} / ${maxPage+1}`;
+  document.getElementById("first").disabled = PAGE<=0;
+  document.getElementById("prev").disabled = PAGE<=0;
+  document.getElementById("next").disabled = PAGE>=maxPage;
+  document.getElementById("last").disabled = PAGE>=maxPage;
+  document.getElementById("jump").max = maxPage+1;
+}
+
+// ---- utils ---------------------------------------------------------------
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+// ---- wire up controls ----------------------------------------------------
+function onControlChange(){ PAGE=0; refresh(); }
+["q","nfeat","minD","minColD","maxP","qualOnly","sortKey","sortDir","pageSize"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", onControlChange);
+  document.getElementById(id).addEventListener("change", onControlChange);  // checkboxes/selects
+});
+document.getElementById("reset").onclick = ()=>{
+  ["q","minD","minColD","maxP"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("nfeat").value=""; document.getElementById("qualOnly").checked=false;
+  document.getElementById("sortKey").value="margin"; document.getElementById("sortDir").value="desc";
+  onControlChange();
+};
+document.getElementById("first").onclick=()=>{PAGE=0;refresh();};
+document.getElementById("prev").onclick =()=>{PAGE=Math.max(0,PAGE-1);refresh();};
+document.getElementById("next").onclick =()=>{PAGE=PAGE+1;refresh();};
+document.getElementById("last").onclick =()=>{PAGE=1e9;refresh();};
+document.getElementById("jump").addEventListener("change", e=>{ PAGE=Math.max(0,(parseInt(e.target.value,10)||1)-1); refresh(); });
+document.getElementById("loadNew").onclick = ()=>{ document.getElementById("app").classList.add("hidden"); document.getElementById("paramsBar").classList.add("hidden"); document.getElementById("loader").classList.remove("hidden"); };
+
+// file input + drag/drop
+document.getElementById("file").addEventListener("change", e=>{
+  const file=e.target.files[0]; if(!file) return;
+  file.text().then(loadText);
+});
+const drop=document.getElementById("drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev, e=>{e.preventDefault(); drop.classList.add("hl");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev, e=>{e.preventDefault(); drop.classList.remove("hl");}));
+drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) f.text().then(loadText); });
+
+// Try to auto-load a co-located results file when served over http(s).
+(function autoload(){
+  if(location.protocol==="file:") return;  // fetch blocked from file://; use the picker
+  const name = new URLSearchParams(location.search).get("src") || "try01_full.json";
+  fetch(name).then(r=>{ if(r.ok) return r.text(); throw 0; }).then(loadText).catch(()=>{});
+})();
+</script>
+</body>
+</html>

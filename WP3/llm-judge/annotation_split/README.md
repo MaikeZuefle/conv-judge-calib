@@ -11,6 +11,7 @@ of conversations that differ by at least a configurable margin.
 | --- | --- |
 | `annotation_split.py` | Search annotation columns/combinations for two well-separated partitions. |
 | `sanity_check_partitions.py` | Recompute a saved partition's margins from scratch, to validate it. |
+| `browse_splits.html` | Self-contained browser UI to interactively filter/sort/inspect a results JSON. |
 | `fetch_annotations.py` | Download **only** the annotations from HuggingFace (no audio) and aggregate them to conversation level. |
 | `BetterUp CANDOR Corpus Data Dictionary - survey.csv` | The BetterUp survey schema: every raw survey column, its question text, response scale, and notes. |
 
@@ -391,6 +392,38 @@ output does). An older assignment file with just `low`/`high` would z-score over
 and the composite numbers would drift slightly — the printed `sizes` (`mid=…`) and `unmatched`
 count make that visible. The **per-column** stats (Cohen's d, AUC, raw diff) only use the `low`
 and `high` values and are unaffected either way.
+
+---
+
+## `browse_splits.html` — interactive viewer
+
+A single self-contained HTML file (no dependencies, no network, no build step) for exploring a
+results JSON written by `annotation_split.py --out-json` (e.g. `try01_full.json`, which can hold
+tens of thousands of splits). Everything runs locally in the browser.
+
+Open it and load the JSON one of two ways:
+
+```bash
+# 1) Just open the file and pick/drag the JSON in the page (works from file://):
+xdg-open browse_splits.html            # or double-click it
+
+# 2) Serve the folder so it auto-loads a co-located file (fetch is blocked on file://):
+python3 -m http.server 8000
+#   then visit  http://localhost:8000/browse_splits.html
+#   (auto-loads try01_full.json; use ?src=other.json for a different file)
+```
+
+It shows the run `params` up top and a sortable, filterable, paginated table of every split:
+- **filter** by feature substring, number of features, min composite Cohen's d, min per-column d,
+  max p-value, and qualified-only;
+- **sort** by any score column (click a header, or use the dropdown) — default is the run's
+  margin metric;
+- **click a split** to expand its per-column separation (with a Cohen's d bar), the `low`/`high`/
+  `mid` label mix, the full score, and member ids if the JSON was written with `--json-ids`;
+- **click a feature chip** to filter to splits containing it.
+
+Large files (15 MB / ~17k splits) load and browse smoothly since only the current page of rows
+is rendered.
 
 ---
 

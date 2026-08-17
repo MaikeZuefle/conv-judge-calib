@@ -4,14 +4,14 @@ import json
 from tqdm import tqdm
 from transformers import set_seed
 
-from data import candor
+from data import candor, voice_arena
 from prompts import PROMPTS
 from models.qwen25omni import Qwen25Omni
 from models.avflamingo import AVFlamingo
 from models.phi4multimodal import Phi4Multimodal
 from utils import filter_convo_ids, get_examples_path, load_done_ids, log, log_resume_status
 
-DATASETS = {"candor": candor}
+DATASETS = {"candor": candor, "voice_arena": voice_arena}
 MODELS = {"qwen25omni": Qwen25Omni, "avflamingo": AVFlamingo, "phi4multimodal": Phi4Multimodal}
 
 

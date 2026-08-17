@@ -33,6 +33,12 @@ def get_audio_path(convo_id):
     return hf_hub_download(REPO_ID, repo_type="dataset", filename=f"{convo_id}/processed/{convo_id}.mp3")
 
 
+def get_audio_duration(convo_id):
+    import soundfile as sf
+
+    return sf.info(get_audio_path(convo_id)).duration
+
+
 def _transcript_turns(convo_id):
     path = hf_hub_download(
         REPO_ID, repo_type="dataset", filename=f"{convo_id}/transcription/transcript_backbiter.csv"

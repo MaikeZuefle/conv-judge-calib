@@ -9,7 +9,10 @@ class Qwen25Omni:
     def __init__(self):
         import logging
 
-        from transformers import Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor
+        from transformers import (
+            Qwen2_5OmniForConditionalGeneration,
+            Qwen2_5OmniProcessor,
+        )
 
         logging.getLogger().setLevel(logging.ERROR)
 
@@ -18,17 +21,31 @@ class Qwen25Omni:
         )
         self.processor = Qwen2_5OmniProcessor.from_pretrained("Qwen/Qwen2.5-Omni-7B")
 
-    def generate(self, prompt, content, modality="speech", max_new_tokens=512):
+    def generate(self, prompt, content, modality="speech", max_new_tokens=512,
+                 preamble=None, system=None, clip_prefix="CONVERSATION"):
+        """`preamble` is placed before the content, so a task can be stated up front
+        rather than only after a long transcript. `system` overrides the default system
+        prompt, which forbids explanation and so suppresses chain-of-thought styles.
+        `clip_prefix` sets the label inserted before each audio clip, e.g. "CALL"."""
         import torch
         from qwen_omni_utils import process_mm_info
 
         if modality == "speech":
-            user_content = [{"type": "audio", "audio": content}, {"type": "text", "text": prompt}]
+            # content is one audio path or several; several are interleaved with
+            # "[{clip_prefix} n]" labels so the model can refer to them by number
+            clips = content if isinstance(content, (list, tuple)) else [content]
+            user_content = [{"type": "text", "text": preamble}] if preamble else []
+            for i, clip in enumerate(clips, 1):
+                if len(clips) > 1:
+                    user_content.append({"type": "text", "text": f"[{clip_prefix} {i}]"})
+                user_content.append({"type": "audio", "audio": clip})
+            user_content.append({"type": "text", "text": prompt})
         else:
-            user_content = [{"type": "text", "text": f"{content}\n\n{prompt}"}]
+            parts = [p for p in (preamble, content, prompt) if p]
+            user_content = [{"type": "text", "text": "\n\n".join(parts)}]
 
         conversation = [
-            {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
+            {"role": "system", "content": [{"type": "text", "text": system or SYSTEM_PROMPT}]},
             {"role": "user", "content": user_content},
         ]
         text = self.processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)

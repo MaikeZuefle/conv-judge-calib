@@ -1,5 +1,6 @@
 import json
 import re
+from math import sqrt
 from pathlib import Path
 
 LEVEL_COLORS = {"INFO": "92", "WARN": "93", "ERROR": "91"}
@@ -13,6 +14,22 @@ def log(level: str, msg: str):
     print(f"{colorize(f'[{level}]', LEVEL_COLORS.get(level, '97'))} {msg}")
 
 
+# Bootstrap resample count, shared so the CIs in different analyses are comparable.
+N_BOOT = 10000
+
+
+def wilson(k, n, z=1.96):
+    """Wilson score interval as fractions; more honest than the normal approximation
+    near 0 or 1. Callers reporting percentages scale the result themselves."""
+    if n == 0:
+        return 0.0, 0.0
+    p = k / n
+    d = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / d
+    half = z * sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
 def get_run_dir(args):
     return Path(args.output_folder) / f"{args.dataset}_{args.model}_{args.prompt}_{args.input_modality}"
 
@@ -21,11 +38,25 @@ def get_examples_path(args):
     return get_run_dir(args) / "examples.jsonl"
 
 
-def load_done_ids(output_path):
+def load_done_ids(output_path, id_key="id", require_field=None):
+    """Ids already present in a resumable JSONL output.
+
+    `id_key` names the id field, which differs between runners ("id" vs "call_id").
+    `require_field` names a field that must be non-null for the record to count as done:
+    the scoring runners write a record even when the model produced no usable score, and
+    that is a failure to re-attempt rather than a completed item.
+    """
     if not output_path.exists():
         return set()
+    done = set()
     with open(output_path) as f:
-        return {json.loads(line)["id"] for line in f if line.strip()}
+        for line in f:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            if require_field is None or record.get(require_field) is not None:
+                done.add(str(record[id_key]))
+    return done
 
 
 def filter_convo_ids(dataset, convo_ids, categories, limit):

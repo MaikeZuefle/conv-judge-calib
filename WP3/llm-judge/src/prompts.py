@@ -146,3 +146,15 @@ PROMPTS = {
     "CoT_category": category_prompt(["HSC", "MSC", "LSC"]),
     "CoT_category_hsc_lsc": category_prompt(["HSC", "LSC"]),
 }
+
+# used by run_judge_ensemble.py's two-stage pipeline (one model summarizes, another judges the
+# summary); kept out of PROMPTS since they aren't meant to be run standalone via run_judge.py
+SUMMARY_ONLY_PROMPT = (
+    "Listen to this conversation. Respond with only a JSON object with one field: "
+    '"summary", a brief summary of what was discussed.'
+)
+JUDGE_FROM_SUMMARY_PROMPT = (
+    "The text above is a summary of a conversation. Respond with only a JSON object with one "
+    'field: "score", your rating of how successful the conversation seems to have been on a '
+    "scale from 0 (not successful) to 10 (very successful)."
+)

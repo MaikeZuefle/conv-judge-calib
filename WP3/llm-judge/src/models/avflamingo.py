@@ -4,7 +4,10 @@ MODEL_ID = "nvidia/nemotron-labs-audio-visual-flamingo-hf"
 class AVFlamingo:
     def __init__(self):
         import torch
-        from transformers import AudioVisualFlamingoForConditionalGeneration, AutoProcessor
+        from transformers import (
+            AudioVisualFlamingoForConditionalGeneration,
+            AutoProcessor,
+        )
 
         dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
         self.model = AudioVisualFlamingoForConditionalGeneration.from_pretrained(
@@ -12,9 +15,11 @@ class AVFlamingo:
         ).eval()
         self.processor = AutoProcessor.from_pretrained(MODEL_ID, load_audio_in_video=True, num_video_frames=128)
 
-    def generate(self, prompt, content, modality="speech", max_new_tokens=512):
+    def generate(self, prompt, content, modality="speech", max_new_tokens=512, **_):
         if modality == "speech":
-            user_content = [{"type": "audio", "path": content}, {"type": "text", "text": prompt}]
+            clips = content if isinstance(content, (list, tuple)) else [content]
+            user_content = [{"type": "audio", "path": c} for c in clips]
+            user_content.append({"type": "text", "text": prompt})
         else:
             user_content = [{"type": "text", "text": f"{content}\n\n{prompt}"}]
 

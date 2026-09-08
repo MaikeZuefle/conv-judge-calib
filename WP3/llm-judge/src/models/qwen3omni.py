@@ -36,7 +36,15 @@ class Qwen3Omni:
         )
         self.processor = Qwen3OmniMoeProcessor.from_pretrained(MODEL_ID)
 
-    def generate(self, prompt, content, modality="speech", max_new_tokens=512):
+        # The installed transformers version always projects every prefill position through
+        # lm_head (~150k-vocab), even though generate() only ever samples from the last one.
+        # For CANDOR's long audio inputs that single matmul can require tens of GiB and OOM.
+        # Only the last position is ever needed for sampling, so slice before projecting.
+        lm_head = self.model.thinker.lm_head
+        original_lm_head_forward = lm_head.forward
+        lm_head.forward = lambda hidden_states: original_lm_head_forward(hidden_states[:, -1:, :])
+
+    def generate(self, prompt, content, modality="speech", max_new_tokens=768):
         import torch
         from qwen_omni_utils import process_mm_info
 

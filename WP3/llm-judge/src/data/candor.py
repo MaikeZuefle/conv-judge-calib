@@ -13,6 +13,20 @@ set_verbosity_error()
 REPO_ID = "JSALT2026-Conv-AI-Simulator/CANDOR"
 METRICS_PATH = Path(__file__).parent / "survey_metrics_conversation_level.csv"
 
+# Longer than Qwen3-Omni's 65536-token context window can hold once audio tokens
+# (~13/s, from its position_id_per_seconds config) plus prompt/generation overhead are
+# counted -- see WP3/llm-judge/src/analyze_candor_lengths.py. Excluded dataset-wide so
+# every model/modality run is judged over the same conversation set.
+EXCLUDED_IDS = frozenset({
+    "00deb2e5-cf7f-4a5c-a8db-7fc335634ad6",  # 98.5 min
+    "012dd705-ee62-49f6-8016-cf2e3cc066e4",  # 95.6 min
+    "be788bd7-a0b2-4075-8c0d-d18a7fe841cb",  # 90.6 min
+    "ab642b9e-2060-4c49-86c3-92cfc0c865f0",  # 90.1 min
+    "0e9c68be-efc0-40cf-8a9e-06f818063cb9",  # 90.0 min
+    "ea4c6102-1123-41fc-b8ab-96f4295af3d0",  # 84.2 min
+    "1e606ba1-3721-4da1-b721-d2530c1546bd",  # 83.4 min
+})
+
 
 @cache
 def _metrics():
@@ -22,7 +36,11 @@ def _metrics():
 
 @cache
 def _included_ids():
-    return sorted(cid for cid, row in _metrics().items() if row["label"] != "UNSCORED" and row["paper_pcs_proxy"])
+    return sorted(
+        cid
+        for cid, row in _metrics().items()
+        if row["label"] != "UNSCORED" and row["paper_pcs_proxy"] and cid not in EXCLUDED_IDS
+    )
 
 
 def list_conversations():
@@ -37,6 +55,17 @@ def get_audio_duration(convo_id):
     import soundfile as sf
 
     return sf.info(get_audio_path(convo_id)).duration
+
+
+def get_transcript_duration(convo_id):
+    """Estimate conversation duration from the transcript's last turn start time.
+
+    Cheap proxy for get_audio_duration: reuses the already-downloaded transcript
+    CSV instead of pulling the full (much larger) audio file just to read its
+    header.
+    """
+    turns = _transcript_turns(convo_id)
+    return turns[-1]["start"] if turns else 0.0
 
 
 def _transcript_turns(convo_id):

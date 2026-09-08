@@ -17,6 +17,13 @@ with open("data/pointwise_dataset.jsonl", "r") as f:
 
 data_agg = collections.defaultdict(list)
 for line in data:
+    if line["judge"] not in [
+        # "qwen25omni_success_text",
+        "phi4multimodal_CoT_summary_text",
+        "phi4multimodal_CoT_questions_summary_liking_text",
+        "phi4multimodal_CoT_questions_speech",
+    ]:
+        continue
     data_agg[line["judge"]].append(min(10, max(0, line["score"])))
 
 data_human = []
@@ -25,22 +32,35 @@ for line in data_human_raw:
 
 plt.rcParams["font.family"] = "serif"
 
-fig, axs = plt.subplots(figsize=(4, 3.5), nrows=2, ncols=2, sharex=True)
-for (judge, scores), ax in zip(data_agg.items(), axs.flat):
+fig, axs = plt.subplots(figsize=(4.2, 1.5), nrows=1, ncols=2, sharex=True, sharey=True)
+sns.kdeplot(
+    data_human,
+    fill=False,
+    linewidth=2,
+    ax=axs[0],
+    color="black",
+    zorder=10
+)
+sns.kdeplot(
+    data_human,
+    fill=False,
+    linewidth=2,
+    ax=axs[1],
+    color="black",
+    zorder=10
+)
+
+
+
+for (judge, scores), color in zip(list(data_agg.items())[::-1], ["tab:blue", "tab:green", "tab:orange"]):
     sns.kdeplot(
         scores,
         fill=True,
-        alpha=1,
+        alpha=0.5,
         linewidth=0,
-        ax=ax
-    )
-    sns.kdeplot(
-        data_human,
-        fill=False,
-        linewidth=2,
-        ax=ax,
-        color="black",
-        zorder=10
+        bw_adjust=1,
+        ax=axs[0],
+        color=color,
     )
 
     # match mean and var
@@ -52,18 +72,78 @@ for (judge, scores), ax in zip(data_agg.items(), axs.flat):
         fill=True,
         linewidth=0,
         alpha=0.5,
-        ax=ax,
-        color="tab:green",
+        bw_adjust=1,
+        ax=axs[1],
+        color=color,
         zorder=-10,
     )
-    ax.set_title(
-        judge.replace("multimodal_CoT", "").replace("_liking_text", ""),
-        fontsize=9
-    )
-    if ax not in axs[:, 0]:
+text_kwargs = dict(
+    fontsize=7,
+    ha='center', va='center',
+)
+
+for ax in axs:
+    ax.set_yticks([])
+    if ax != axs[0]:
         ax.set_ylabel("")
     ax.spines[["top", "right"]].set_visible(False)
 
+    ax.text(
+        0.15, 0.08,
+        "human",
+        transform=ax.transAxes,
+        **text_kwargs
+    )
+
+axs[0].text(
+    0.55, 0.9,
+    "Qwen2.5",
+    color="tab:orange",
+    transform=axs[0].transAxes,
+    **text_kwargs
+)
+axs[0].text(
+    0.85, 0.5,
+    "Phi4 A",
+    color="tab:blue",
+    transform=axs[0].transAxes,
+    **text_kwargs
+)
+axs[0].text(
+    0.95, 0.4,
+    "Phi4 B",
+    color="tab:green",
+    transform=axs[0].transAxes,
+    **text_kwargs
+)
+
+axs[1].text(
+    0.85, 0.7,
+    "Qwen2.5",
+    color="tab:orange",
+    transform=axs[1].transAxes,
+    **text_kwargs
+)
+axs[1].text(
+    0.85, 0.6,
+    "Phi4 A",
+    color="tab:blue",
+    transform=axs[1].transAxes,
+    **text_kwargs
+)
+axs[1].text(
+    0.85, 0.5,
+    "Phi4 B",
+    color="tab:green",
+    transform=axs[1].transAxes,
+    **text_kwargs
+)
+
+axs[0].set_xlabel("Score (raw)")
+axs[1].set_xlabel("Score (calibrated)")
+plt.xticks([0, 2, 4, 6, 8, 10])
 plt.xlim(0, 10)
-plt.tight_layout(pad=0.1)
+plt.tight_layout(pad=0.2)
+os.makedirs("computed/", exist_ok=True)
+plt.savefig("computed/score_distribution.pdf")
 plt.show()

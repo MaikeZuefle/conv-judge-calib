@@ -10,6 +10,7 @@ from models.qwen25omni import Qwen25Omni
 from models.avflamingo import AVFlamingo
 from models.phi4multimodal import Phi4Multimodal
 from models.qwen36_27b import Qwen36_27B
+from models.qwen3omni import Qwen3Omni
 from utils import filter_convo_ids, get_examples_path, load_done_ids, log, log_resume_status
 
 DATASETS = {"candor": candor, "voice_arena": voice_arena}
@@ -18,6 +19,7 @@ MODELS = {
     "avflamingo": AVFlamingo,
     "phi4multimodal": Phi4Multimodal,
     "qwen36_27b": Qwen36_27B,
+    "qwen3omni": Qwen3Omni,
 }
 
 

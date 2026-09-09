@@ -1,6 +1,7 @@
 # %%
 
 import math
+from typing import Callable
 
 import matplotlib.pyplot as plt
 import json
@@ -10,6 +11,7 @@ import numpy as np
 import seaborn as sns
 import statistics
 import sklearn.linear_model
+import scipy.stats
 
 os.chdir(os.path.dirname(os.path.abspath(__file__))+"/..")
 
@@ -20,13 +22,6 @@ with open("data/pointwise_dataset.jsonl", "r") as f:
 
 data_agg = collections.defaultdict(dict)
 for line in data_llm_raw:
-    # if line["judge"] not in [
-    #     "qwen25omni_success_text",
-    #     "phi4multimodal_CoT_summary_text",
-    #     "phi4multimodal_CoT_questions_summary_liking_text",
-    #     "phi4multimodal_CoT_questions_speech",
-    # ]:
-    #     continue
     data_agg[line["judge"]][line["conversation"]] = min(10, max(0, line["score"]))
 
 data_human = {}
@@ -40,8 +35,19 @@ data_agg = {
     for judge, scores in data_agg.items()
 }
 
-def dist_difference(y_human: list[float], y_llm: list[float]) -> float:
+def loss_mse(y_human: list[float], y_llm: list[float]) -> float:
     return statistics.mean([abs(a - b)**2 for a, b in zip(y_human, y_llm)])
+
+def loss_bucket_sizes(y_human: list[float], y_llm: list[float]) -> float:
+    bins = np.linspace(0, 10, 11)
+    hist_human, _ = np.histogram(y_human, bins=bins)
+    hist_llm, _ = np.histogram(y_llm, bins=bins)
+    hist_human = hist_human / sum(hist_human)
+    hist_llm = hist_llm / sum(hist_llm)
+    return statistics.mean([abs(a - b)**2 for a, b in zip(hist_human, hist_llm)])
+
+def loss_wasserstein(y_human: list[float], y_llm: list[float]) -> float:
+    return scipy.stats.wasserstein_distance(y_human, y_llm)
 
 def transform_identity(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
     return y_llm_test
@@ -84,26 +90,46 @@ def get_anchors_set_random(y_human: list[float], size: int) -> list[int]:
     return np.random.choice(len(y_human), size=size, replace=False).tolist()
 
 
-def get_anchors_set_optimized(y_human: list[float], y_llms: list[list[float]], size: int) -> list[int]:
+def get_anchors_set_optimized(
+    y_human: list[float], y_llms: list[list[float]],
+    size: int,
+    fn: Callable[[list[float], list[float], list[float]], list[float]]
+) -> list[int]:
     best_indices = None
     best_mae = math.inf
     for _ in range(1_000):
         indices = get_anchors_set_random(y_human, size=size)
         scores_human = [y_human[i] for i in indices]
-        maes = []
+        losses = []
         for scores in y_llms:
             scores_anchors = [scores[i] for i in indices]
-            scores_new = np.clip(transform_musigma(scores_human, scores_anchors, scores), 0, 10).tolist()
-            mae = dist_difference(y_human, scores_new)
-            maes.append(mae)
-        mae = statistics.mean(maes)
-        if mae < best_mae:
-            best_mae = mae
+            scores_new = np.clip(fn(scores_human, scores_anchors, scores), 0, 10).tolist()
+            loss = loss_wasserstein(y_human, scores_new)
+            losses.append(loss)
+        loss = statistics.mean(losses)
+        if loss < best_mae:
+            best_mae = loss
             best_indices = indices
 
     assert best_indices is not None
     return best_indices
 
+import scipy.optimize
+
+def transform_bucket_optimized(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
+    def loss(params):
+        a, b = params
+        y_llm_transformed = [a * y + b for y in y_llm]
+        return loss_wasserstein(y_human, y_llm_transformed)
+    
+    # Initialize with the constant shift as a stable prior
+    b_init = statistics.mean([a - b for a, b in zip(y_human, y_llm)])
+    initial_guess = [1.0, b_init] 
+    
+    result = scipy.optimize.minimize(loss, initial_guess, method='Nelder-Mead')
+    
+    a_opt, b_opt = result.x
+    return [a_opt * y + b_opt for y in y_llm_test]
 
 METHODS_TRANSFORM = [
     ("identity", transform_identity),
@@ -112,6 +138,7 @@ METHODS_TRANSFORM = [
     ("affine", transform_affine),
     ("minmax", transform_minmax),
     ("musigma", transform_musigma),
+    ("bucket_optimized", transform_bucket_optimized),
 ]
 
 
@@ -127,21 +154,22 @@ for method_transform_name, method_transform in METHODS_TRANSFORM:
             for judge, scores in data_agg.items():
                 scores_anchors = [scores[i] for i in indices]
                 scores_new = np.clip(method_transform(scores_human, scores_anchors, scores), 0, 10).tolist()
-                maes_random.append(dist_difference(data_human, scores_new))
+                maes_random.append(loss_wasserstein(data_human, scores_new))
 
         # optimized selection
         for judge, scores in data_agg.items():
             indices = get_anchors_set_optimized(
                 data_human,
                 [scores for _judge, scores in data_agg.items() if _judge != judge],
-                size=size
+                size=size,
+                fn=method_transform
             )
             scores_human = [data_human[i] for i in indices]
             scores_anchors = [scores[i] for i in indices]
             scores_new = np.clip(method_transform(scores_human, scores_anchors, scores), 0, 10).tolist()
-            maes_optimized.append(dist_difference(data_human, scores_new))
+            maes_optimized.append(loss_wasserstein(data_human, scores_new))
 
-        print(f"{method_transform_name:<10} {size:<5} {statistics.mean(maes_random):.2f}  {statistics.mean(maes_optimized):.2f}")
+        print(f"{method_transform_name:<10} {size:<5} {statistics.mean(maes_random):>5.3}  {statistics.mean(maes_optimized):>5.3}")
 
 
 # %%
@@ -165,6 +193,17 @@ sns.kdeplot(
     zorder=10
 )
 
+data_agg_local = {
+    k: v
+    for k, v in data_agg.items()
+    if k not in {
+        # "qwen25omni_success_text",
+        # "phi4multimodal_CoT_summary_text",
+        # "phi4multimodal_CoT_questions_summary_liking_text",
+        # "phi4multimodal_CoT_questions_speech",
+    }
+}
+
 for (judge, scores), color in zip(list(data_agg.items())[::-1], ["tab:blue", "tab:green", "tab:orange"]):
     sns.kdeplot(
         scores,
@@ -176,12 +215,8 @@ for (judge, scores), color in zip(list(data_agg.items())[::-1], ["tab:blue", "ta
         color=color,
     )
 
-    # match mean and var
-    # TODO: the np.mean(scores_new) and np.std(scores_new) should be estimated based on a subset
-    scores_new = np.array(scores)
-    scores_new = (scores_new - np.mean(scores_new)) / np.std(scores_new) * np.std(data_human) + np.mean(data_human)
-
-    # TODO: affine + clip
+    # mu/sigma calibration
+    scores_new = np.clip(transform_constant(data_human, scores, scores), 0, 10).tolist()
 
     sns.kdeplot(
         scores_new,

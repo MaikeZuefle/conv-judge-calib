@@ -132,11 +132,11 @@ def transform_bucket_optimized(y_human: list[float], y_llm: list[float], y_llm_t
     return [a_opt * y + b_opt for y in y_llm_test]
 
 METHODS_TRANSFORM = [
-    ("identity", transform_identity),
-    ("constant", transform_constant),
-    ("linear", transform_linear),
-    ("affine", transform_affine),
-    ("minmax", transform_minmax),
+    # ("identity", transform_identity),
+    # ("constant", transform_constant),
+    # ("linear", transform_linear),
+    # ("affine", transform_affine),
+    # ("minmax", transform_minmax),
     ("musigma", transform_musigma),
     ("bucket_optimized", transform_bucket_optimized),
 ]
@@ -164,6 +164,9 @@ for method_transform_name, method_transform in METHODS_TRANSFORM:
                 size=size,
                 fn=method_transform
             )
+            if size == 32 and method_transform_name == "musigma":
+                for idx in indices:
+                    print(common_conversations[idx])
             scores_human = [data_human[i] for i in indices]
             scores_anchors = [scores[i] for i in indices]
             scores_new = np.clip(method_transform(scores_human, scores_anchors, scores), 0, 10).tolist()

@@ -1,11 +1,3 @@
-"""Does calibration make different judges' VoiceArena score distributions agree with each
-other, even though it was fit purely on CANDOR? No VoiceArena ground truth needed: compare
-judges against each other instead of against a target. Average pairwise Wasserstein distance
-between every pair of judges' raw distributions vs. the same for their calibrated ones -- a
-smaller number for calibrated means calibration achieves cross-judge comparability out of
-domain, which is the property it is meant to have in the first place.
-"""
-
 import argparse
 import json
 from itertools import combinations
@@ -13,11 +5,9 @@ from pathlib import Path
 
 from scipy.stats import wasserstein_distance
 
-CALIBRATION_DIR = Path(__file__).resolve().parents[1] / "calibration_data"
+from multi_judge_fit import apply_calibration
 
-
-def apply_calibration(params, score):
-    return params["slope"] * score + params["intercept"]
+CALIBRATION_DIR = Path(__file__).resolve().parent
 
 
 def load_voicearena_scores(path):

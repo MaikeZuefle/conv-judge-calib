@@ -1,0 +1,39 @@
+[project]
+name = "conv-judge-calib"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "tqdm",
+    "scipy",
+    "scikit-learn",
+    "krippendorff",
+    "huggingface_hub",
+    "soundfile",
+]
+
+# Each judge model needs its own transformers pin (or fork) that conflicts with the others,
+# so install exactly one of these extras per environment.
+[project.optional-dependencies]
+qwen = [
+    "torch",
+    "transformers @ git+https://github.com/huggingface/transformers@v4.51.3-Qwen2.5-Omni-preview",
+    "qwen-omni-utils",
+]
+qwen36 = [
+    "torch",
+    # Qwen3.6-27B is very recent; unlike the other extras here this isn't pinned to a version
+    # verified to work, you may need a newer transformers than this if loading fails.
+    "transformers>=4.57.0",
+]
+phi = [
+    "torch",
+    "transformers==4.48.2",
+    "flash_attn==2.7.4.post1",
+    "peft==0.13.2",
+    "pillow",
+]
+flamingo = [
+    "torch",
+    "torchaudio",
+    "transformers[video] @ git+https://github.com/lashahub/transformers.git@add_AudioVisualFlamingo",
+]

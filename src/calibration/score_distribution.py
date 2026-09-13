@@ -10,14 +10,23 @@ import os
 import numpy as np
 import seaborn as sns
 import statistics
-import sklearn.linear_model
-import scipy.stats
 
-os.chdir(os.path.dirname(os.path.abspath(__file__))+"/..")
+from calibration_functions import (
+    loss_wasserstein,
+    transform_affine,
+    transform_constant,
+    transform_identity,
+    transform_linear,
+    transform_minmax,
+    transform_musigma,
+    transform_wasserstein_affine,
+)
 
-with open("data/judge_scores_dataset.jsonl", "r") as f:
+CALIBRATION_DIR = os.path.dirname(os.path.abspath(__file__))
+
+with open(os.path.join(CALIBRATION_DIR, "judge_scores_dataset.jsonl"), "r") as f:
     data_llm_raw = [json.loads(line) for line in f]
-with open("data/pointwise_dataset.jsonl", "r") as f:
+with open(os.path.join(CALIBRATION_DIR, "pointwise_dataset.jsonl"), "r") as f:
     data_human_raw = [json.loads(line) for line in f]
 
 data_agg = collections.defaultdict(dict)
@@ -45,46 +54,6 @@ def loss_bucket_sizes(y_human: list[float], y_llm: list[float]) -> float:
     hist_human = hist_human / sum(hist_human)
     hist_llm = hist_llm / sum(hist_llm)
     return statistics.mean([abs(a - b)**2 for a, b in zip(hist_human, hist_llm)])
-
-def loss_wasserstein(y_human: list[float], y_llm: list[float]) -> float:
-    return scipy.stats.wasserstein_distance(y_human, y_llm)
-
-def transform_identity(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
-    return y_llm_test
-
-def transform_constant(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
-    b = statistics.mean([a - b for a, b in zip(y_human, y_llm)])
-    return [y + b for y in y_llm_test]
-
-def transform_linear(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
-    model = sklearn.linear_model.LinearRegression(fit_intercept=False)
-    model.fit(np.array(y_llm).reshape(-1, 1), np.array(y_human).reshape(-1, 1))
-    return model.predict(np.array(y_llm_test).reshape(-1, 1)).flatten().tolist()
-
-def transform_affine(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
-    model = sklearn.linear_model.LinearRegression(fit_intercept=True)
-    model.fit(np.array(y_llm).reshape(-1, 1), np.array(y_human).reshape(-1, 1))
-    return model.predict(np.array(y_llm_test).reshape(-1, 1)).flatten().tolist()
-
-def transform_minmax(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
-    min_human, max_human = min(y_human), max(y_human)
-    min_llm, max_llm = min(y_llm), max(y_llm)
-    if max_llm - min_llm == 0:
-        return y_llm_test
-    return [
-        (y - min_llm) / (max_llm - min_llm) * (max_human - min_human) + min_human
-        for y in y_llm_test
-    ]
-
-def transform_musigma(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
-    mean_human, std_human = statistics.mean(y_human), statistics.stdev(y_human)
-    mean_llm, std_llm = statistics.mean(y_llm), statistics.stdev(y_llm)
-    if std_llm == 0:
-        return y_llm_test
-    return [
-        (y - mean_llm) / std_llm * std_human + mean_human
-        for y in y_llm_test
-    ]
 
 def get_anchors_set_random(y_human: list[float], size: int) -> list[int]:
     return np.random.choice(len(y_human), size=size, replace=False).tolist()
@@ -114,23 +83,6 @@ def get_anchors_set_optimized(
     assert best_indices is not None
     return best_indices
 
-import scipy.optimize
-
-def transform_bucket_optimized(y_human: list[float], y_llm: list[float], y_llm_test: list[float]) -> list[float]:
-    def loss(params):
-        a, b = params
-        y_llm_transformed = [a * y + b for y in y_llm]
-        return loss_wasserstein(y_human, y_llm_transformed)
-    
-    # Initialize with the constant shift as a stable prior
-    b_init = statistics.mean([a - b for a, b in zip(y_human, y_llm)])
-    initial_guess = [1.0, b_init] 
-    
-    result = scipy.optimize.minimize(loss, initial_guess, method='Nelder-Mead')
-    
-    a_opt, b_opt = result.x
-    return [a_opt * y + b_opt for y in y_llm_test]
-
 METHODS_TRANSFORM = [
     # ("identity", transform_identity),
     # ("constant", transform_constant),
@@ -138,7 +90,7 @@ METHODS_TRANSFORM = [
     # ("affine", transform_affine),
     # ("minmax", transform_minmax),
     ("musigma", transform_musigma),
-    ("bucket_optimized", transform_bucket_optimized),
+    ("bucket_optimized", transform_wasserstein_affine),
 ]
 
 
@@ -300,5 +252,5 @@ plt.xticks([0, 2, 4, 6, 8, 10])
 plt.xlim(0, 10)
 plt.tight_layout(pad=0.2)
 os.makedirs("computed/", exist_ok=True)
-plt.savefig("computed/score_distribution.pdf")
+plt.savefig(os.path.join("computed", "score_distribution.pdf"))
 plt.show()

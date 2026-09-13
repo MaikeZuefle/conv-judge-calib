@@ -9,7 +9,6 @@ from huggingface_hub import snapshot_download
 from scipy.optimize import minimize
 
 REPO_ID = "patuchen/Human-AI-interaction"
-NATURAL_DIR = "Human-AI-Natural-Conversation-Recording"
 ARENA_DIR = "Human-Agent-VoiceArena"
 ARENA_TRANSCRIPTS_PATH = Path("outputs") / "voice_arena_asr" / "transcripts.jsonl"
 
@@ -17,83 +16,6 @@ ARENA_TRANSCRIPTS_PATH = Path("outputs") / "voice_arena_asr" / "transcripts.json
 @cache
 def _root():
     return Path(snapshot_download(REPO_ID, repo_type="dataset", local_files_only=True))
-
-
-# ---------------------------------------------------------------------------
-# Sub-dataset 1: Human-AI Natural Conversation Recording
-# 5 participants x 4 open-domain spoken conversations with an AI voice agent.
-# ---------------------------------------------------------------------------
-
-
-@cache
-def _recording_index():
-    path = _root() / NATURAL_DIR / "recording_index.csv"
-    with open(path, encoding="utf-8-sig") as f:
-        return list(csv.DictReader(f))
-
-
-def list_natural_recordings():
-    return [row["anonymized_recording_folder"] for row in _recording_index()]
-
-
-def _recording_row(recording_folder):
-    for row in _recording_index():
-        if row["anonymized_recording_folder"] == recording_folder:
-            return row
-    raise KeyError(recording_folder)
-
-
-def get_natural_audio_path(recording_folder, speaker):
-    """speaker: "human" or "ai". Returns the .wav path (a matching .mp3 sits alongside it)."""
-    row = _recording_row(recording_folder)
-    subfolder = row["ai_media_folder"] if speaker == "ai" else row["human_media_folder"]
-    folder = _root() / NATURAL_DIR / recording_folder / subfolder
-    wav_files = list(folder.glob("*.wav"))
-    if not wav_files:
-        raise FileNotFoundError(f"no audio in {folder}")
-    return str(wav_files[0])
-
-
-def get_natural_transcript(recording_folder):
-    row = _recording_row(recording_folder)
-    path = _root() / NATURAL_DIR / recording_folder / row["transcription_file"]
-    return path.read_text()
-
-
-@cache
-def _feedback_rows():
-    path = _root() / NATURAL_DIR / "Natural Conversation Feedback.csv"
-    with open(path, encoding="utf-8-sig") as f:
-        return list(csv.DictReader(f))
-
-
-def get_natural_feedback(recording_folder):
-    """This recording's own feedback fields (naturalness rating, emotions, etc.), pulled out of
-    the participant-level wide CSV (one row per participant, with columns "N.1".."N.6" for each
-    of their 4 recordings, N=session order). Columns "N. ..." (no second number, e.g. "1. What
-    were the most natural moments...") are separate, participant-level reflection questions not
-    tied to any single recording, and are excluded here."""
-    row = _recording_row(recording_folder)
-    participant_id, recording_id = row["participant_id"], row["recording_id"]
-
-    for feedback_row in _feedback_rows():
-        if feedback_row["participant_id"] != participant_id:
-            continue
-        for i in range(1, 5):
-            if feedback_row.get(f"recording_{i}") == recording_id:
-                prefix = f"{i}."
-                return {
-                    k[len(prefix) :]: v
-                    for k, v in feedback_row.items()
-                    if k.startswith(prefix) and k[len(prefix) : len(prefix) + 1].isdigit()
-                }
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Sub-dataset 2: Human-Agent VoiceArena
-# Callers completing airline customer-service tasks against 5 agent systems.
-# ---------------------------------------------------------------------------
 
 
 @cache
@@ -209,3 +131,26 @@ def get_call_strengths(criterion="task_capability"):
         elif winner == v["model2"]:
             comparisons.append((c2, c1, 1.0))
     return _bradley_terry_strengths(call_ids, comparisons)
+
+
+def list_conversations():
+    return list_calls()
+
+
+def get_input(convo_id, modality):
+    if modality == "text":
+        transcript = get_call_transcript(convo_id)
+        if transcript is None:
+            raise FileNotFoundError(f"no transcript for call {convo_id} yet: run transcribe_voice_arena.py first")
+        return transcript
+    return get_call_audio_mono_path(convo_id)
+
+
+def get_label(convo_id):
+    """Bradley-Terry strength (0-1) on whether the call accomplished the airline task, the most
+    direct analog to "success" for this task-oriented dataset."""
+    return get_call_strengths("task_capability")[convo_id]
+
+
+def get_category(convo_id):
+    return get_call_metadata(convo_id)["provider"]

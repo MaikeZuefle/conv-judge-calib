@@ -27,7 +27,7 @@ class Phi4Multimodal:
         self.generation_config = GenerationConfig.from_pretrained(MODEL_ID)
         self._score_token_ids = None
 
-    # ── prompt construction ──────────────────────────────────────────────────
+    # prompt construction
 
     def _build_inputs(self, prompt, content, modality):
         import soundfile as sf
@@ -43,7 +43,7 @@ class Phi4Multimodal:
             inputs = self.processor(text=text, return_tensors="pt")
         return inputs.to(self.model.device)
 
-    # ── free-form generation (pairwise judging) ──────────────────────────────
+    # free-form generation (pairwise judging)
 
     def generate(self, prompt, content, modality="speech", max_new_tokens=512, **_):
         import torch
@@ -59,7 +59,7 @@ class Phi4Multimodal:
         torch.cuda.empty_cache()
         return output[0]
 
-    # ── pointwise scoring via score-token logprobs ───────────────────────────
+    # pointwise scoring via score-token logprobs
 
     def _score_tokens(self, lo, hi):
         """Token id for each integer score in [lo, hi].

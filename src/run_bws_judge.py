@@ -13,6 +13,8 @@ from pathlib import Path
 from tqdm import tqdm
 from transformers import set_seed
 
+from data import voice_arena
+from data.survey_features import load_transcript
 from models.registry import ALL as MODELS
 from prompts import (
     BWS_LAYOUTS,
@@ -21,7 +23,6 @@ from prompts import (
     feature_layout,
     voicearena_layout,
 )
-from survey_features import load_transcript
 from utils import log, parse_json_dict
 
 def load_done_keys(output_path):
@@ -94,10 +95,10 @@ def main(args):
     log("INFO", f"resuming: {len(done)} already done")
 
     if args.transcript_source == "voicearena_audio":
-        from voicearena_data import merged_path as read_input
+        read_input = voice_arena.get_call_audio_mono_path
         input_modality = "speech"
     elif args.transcript_source == "voicearena":
-        from voicearena_data import transcript as read_input
+        read_input = voice_arena.get_call_transcript
         input_modality = "text"
     else:
         read_input = load_transcript

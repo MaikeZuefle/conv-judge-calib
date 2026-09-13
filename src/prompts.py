@@ -349,7 +349,7 @@ def voicearena_layout(n, dimension, modality="text", cot=False):
     return (opening.format(n=n), closing, VOICEARENA_SYSTEM)
 
 
-# ── pointwise (absolute) scoring ─────────────────────────────────────────────
+# pointwise (absolute) scoring
 # One call gets one score, instead of two calls being compared. Validation then checks
 # whether score(winner) > score(loser) on the pairs humans voted on. This is far cheaper
 # than pairwise (one audio per prompt rather than two) and sidesteps presentation-order
@@ -664,7 +664,7 @@ def voicearena_score_layout(dimension, modality="speech", scenario=None):
     return (opening, _VOICEARENA_SCORE_CLOSING[dimension], VOICEARENA_SYSTEM)
 
 
-# ── CANDOR prompts, reused for VoiceArena ────────────────────────────────────
+# CANDOR prompts, reused for VoiceArena
 #
 # The CANDOR prompts above rate a conversation's *success* and never name the criterion,
 # and the original VoiceArena pass scored that single number against both of VoiceArena's

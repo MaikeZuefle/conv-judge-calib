@@ -53,7 +53,7 @@ class Qwen35:
         torch.cuda.empty_cache()
         return text_out
 
-    # ── pointwise scoring via score-token logprobs ───────────────────────────
+    # pointwise scoring via score-token logprobs
 
     def _build_inputs(self, prompt, content, modality="text"):
         if modality != "text":

@@ -116,13 +116,22 @@ for method_transform_name, method_transform in METHODS_TRANSFORM:
                 size=size,
                 fn=method_transform
             )
-            if size == 32 and method_transform_name == "musigma":
-                for idx in indices:
-                    print(common_conversations[idx])
             scores_human = [data_human[i] for i in indices]
             scores_anchors = [scores[i] for i in indices]
             scores_new = np.clip(method_transform(scores_human, scores_anchors, scores), 0, 10).tolist()
             maes_optimized.append(loss_wasserstein(data_human, scores_new))
+        if size == 32 and method_transform_name == "musigma":
+            # optimized selection without excluding a judge
+            for judge, scores in data_agg.items():
+                indices = get_anchors_set_optimized(
+                    data_human,
+                    [scores for _judge, scores in data_agg.items()],
+                    size=size,
+                    fn=method_transform
+                )
+
+            for idx in indices: # type: ignore
+                print(common_conversations[idx])
 
         print(f"{method_transform_name:<10} {size:<5} {statistics.mean(maes_random):>5.3}  {statistics.mean(maes_optimized):>5.3}")
 

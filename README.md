@@ -1,4 +1,7 @@
-# Judging Spoken Human and AI Conversations
+# Calibrating LLM Judges for Human and AI Conversations
+
+[![arXiv](https://img.shields.io/badge/arXiv-2609.29431-b31b1b.svg)](https://arxiv.org/abs/2609.29431)
+[![Hugging Face Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-VoiceArena%2FGoal--Dataset__en__in-yellow)](https://huggingface.co/datasets/VoiceArena/Goal-Dataset_en_in)
 
 Measuring how successful a conversation is remains difficult, even for humans judging spoken
 dialogue. We evaluate state-of-the-art LLMs as pointwise and pairwise judges of conversational
@@ -73,3 +76,17 @@ bash scripts/04_calibrate_va.sh
 ```
 
 Each script is a short example; edit the flags to use your own model/prompt/judges.
+
+## Citation
+
+```bibtex
+@misc{züfle2026calibratingllmjudgeshuman,
+      title={Calibrating LLM Judges for Human and AI Conversations}, 
+      author={Maike Züfle and Patrícia Schmidtová and Vilém Zouhar and Shree Harsha Bokkahalli Satish and Erica Cooper and Shobhit Banga and Vaibhav Nalawade and Manmeet Kaur and Jan Niehues and Markus Müller and Ondřej Klejch},
+      year={2026},
+      eprint={2609.29431},
+      archivePrefix={arXiv},
+      primaryClass={cs.HC},
+      url={https://arxiv.org/abs/2609.29431}, 
+}
+```

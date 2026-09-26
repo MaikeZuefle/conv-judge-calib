@@ -8,6 +8,7 @@ dependencies = [
     "scikit-learn",
     "krippendorff",
     "huggingface_hub",
+    "pyarrow",
     "soundfile",
 ]
 
@@ -31,6 +32,11 @@ phi = [
     "flash_attn==2.7.4.post1",
     "peft==0.13.2",
     "pillow",
+]
+# Whisper, for transcribe_whisper.py (VoiceArena ships no transcripts)
+asr = [
+    "openai-whisper",
+    "librosa",
 ]
 flamingo = [
     "torch",

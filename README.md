@@ -28,6 +28,15 @@ pip install -e ".[phi]"
 pip install -e ".[qwen36]"
 ```
 
+**VoiceArena data**.
+The [VoiceArena dataset](https://huggingface.co/datasets/VoiceArena/Goal-Dataset_en_in) is
+downloaded from the Hugging Face Hub on first use (~4 GB). It ships no transcripts, so
+text-modality runs on it need a one-off Whisper pass first (`pip install -e ".[asr]"`):
+
+```
+python src/transcribe_whisper.py
+```
+
 **Pointwise judging** ([scripts/01_run_pointwise.sh](scripts/01_run_pointwise.sh)).
 Score conversations with a pointwise judge, then evaluate (Spearman, Krippendorff, AUC)
 against ground truth:
